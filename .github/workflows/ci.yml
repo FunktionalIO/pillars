@@ -12,7 +12,7 @@ on:
     branches: ['**', '!update/**', '!pr/**']
   push:
     branches: ['**', '!update/**', '!pr/**']
-    tags: [v*]
+    tags: [prepare-v*, v*]
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -211,6 +211,81 @@ jobs:
           apps: scala-steward
 
       - run: scala-steward validate-repo-config .scala-steward.conf
+
+  prepare-release:
+    name: 👷 Prepare release
+    needs: [build]
+    if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/prepare-v'))
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        scala: [2.13]
+        java: [temurin@11]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      actions: write
+      checks: write
+      contents: write
+      deployments: write
+      id-token: none
+      issues: write
+      packages: write
+      pages: write
+      pull-requests: write
+      repository-projects: write
+      security-events: write
+      statuses: write
+    env:
+      DTC_HEADLESS: true
+    steps:
+      - name: Checkout current branch (full)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get previous tag
+        id: previousTag
+        run: |
+          name=$(git --no-pager tag --sort=creatordate --merged ${{ github.ref_name }} | tail -2 | head -1)
+          ref_name="${{ github.ref_name }}"
+          prefix="refs/tags/prepare-"
+          next_version=${$ref_name/#$prefix}
+          echo "previousTag=$name"
+          echo "previousTag=$name" >> $GITHUB_ENV"
+          echo "nextTag=$next_version"
+          echo "nextTag=$next_version" >> $GITHUB_ENV"
+
+      - name: Update CHANGELOG
+        id: changelog
+        uses: requarks/changelog-action@v1
+        with:
+          token: ${{ github.token }}
+          fromTag: ${{ github.ref_name }}
+          toTag: ${{ env.previousTag }}
+          writeToFile: true
+
+      - name: Commit CHANGELOG.md
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'docs: update CHANGELOG.md for ${{ env.nextTag }} [skip ci]'
+          branch: main
+          file_pattern: CHANGELOG.md docToolchainConfig.groovy
+
+      - name: Create version tag
+        run: |
+          git tag -a "v${{ env.nextTag }}" -m "Release ${{ env.nextTag }}" 
+          git push origin "v${{ env.nextTag }}"
+
+      - name: Create release
+        uses: ncipollo/release-action@v1.14.0
+        with:
+          body: ${{ steps.changelog.outputs.changes }}
+          name: v${{ env.nextTag }}
+          tag: v${{ env.nextTag }}
+          draft: false
+          makeLatest: true
+          allowUpdates: true
+          token: ${{ github.token }}
 
   website:
     name: 🌐 Publish website

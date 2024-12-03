@@ -34,7 +34,7 @@ ThisBuild / tlCiMimaBinaryIssueCheck := true
 ThisBuild / tlCiDependencyGraphJob   := true
 ThisBuild / autoAPIMappings          := true
 
-val sharedSettings = Seq(
+val sharedSettings     = Seq(
   scalaVersion   := "3.5.2",
   libraryDependencies ++= Seq(
     "org.scalameta" %% "munit" % "1.0.3" % Test
@@ -48,72 +48,137 @@ val sharedSettings = Seq(
            |""".stripMargin
   ))
 )
-
-githubWorkflowGeneratedCI ++= Seq(
-  WorkflowJob(
-    id = "website",
-    name = "🌐 Publish website",
-    oses = List("ubuntu-latest"),
-    cond = Some("""github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v'))"""),
-    needs = List("publish"),
-    env = Map("DTC_HEADLESS" -> "true"),
-    permissions = Some(Permissions.Specify.defaultPermissive),
-    concurrency = Some(Concurrency(s"$${{ github.workflow }} @ $${{ github.ref }}", Some(true))),
-    steps = List(
-      WorkflowStep.Checkout,
-      WorkflowStep.Run(
-        name = Some("Setup"),
-        commands = List("chmod +x dtcw")
+val releasePreparation = WorkflowJob(
+  id = "prepare-release",
+  name = "👷 Prepare release",
+  oses = List("ubuntu-latest"),
+  cond = Some("""github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/prepare-v'))"""),
+  needs = List("build"),
+  env = Map("DTC_HEADLESS" -> "true"),
+  permissions = Some(Permissions.Specify.defaultPermissive),
+  steps = List(
+    WorkflowStep.CheckoutFull,
+    WorkflowStep.Run(
+      name = Some("Get previous tag"),
+      id = Some("previousTag"),
+      commands = List(
+        """name=$(git --no-pager tag --sort=creatordate --merged ${{ github.ref_name }} | tail -2 | head -1)""",
+        """ref_name="${{ github.ref_name }}"""",
+        """prefix="refs/tags/prepare-"""",
+        """next_version=${$ref_name/#$prefix}""",
+        """echo "previousTag=$name"""",
+        """echo "previousTag=$name" >> $GITHUB_ENV"""",
+        """echo "nextTag=$next_version"""",
+        """echo "nextTag=$next_version" >> $GITHUB_ENV""""
       )
-    ) ++
-        WorkflowStep.SetupJava(List(JavaSpec.temurin("17"))) ++
-        List(
-          WorkflowStep.Run(
-            name = Some("Install docToolchain"),
-            commands = List("./dtcw local install doctoolchain")
-          ),
-          WorkflowStep.Use(
-            name = Some("Cache sbt"),
-            ref = UseRef.Public("actions", "cache", "v4"),
-            params = Map(
-              "path"         ->
-                  """.ivy2
-                      |.sbt""".stripMargin,
-              "key"          -> s"sbt-$${{ hashFiles('build.sbt', 'plugins.sbt') }}",
-              "restore-keys" -> s"pillars-cache-$${{ hashFiles('build.sbt', 'plugins.sbt') }}"
-            )
-          ),
-          WorkflowStep.Run(
-            name = Some("Get latest version"),
-            id = Some("version"),
-            commands = List(
-              """PILLARS_VERSION="$(git ls-remote --tags $REPO | awk -F"/" '{print $3}' | grep '^v[0-9]*\\.[0-9]*\\.[0-9]*' | grep -v {} | sort --version-sort | tail -n1)""",
-              """echo "latest version is [$PILLARS_VERSION]"""",
-              """echo "version=${PILLARS_VERSION#v}" >> "$GITHUB_OUTPUT""""
-            )
-          ),
-          WorkflowStep.Run(
-            name = Some("Generate site"),
-            commands = List("""./dtcw local generateSite && sbt unidoc"""),
-            env = Map("PILLARS_VERSION" -> "${{ steps.version.outputs.version }}", "DTC_HEADLESS" -> "true")
-          ),
-          WorkflowStep.Run(
-            name = Some("Copy to public"),
-            commands = List("cp -r target/microsite/output ./public")
-          ),
-          WorkflowStep.Use(
-            name = Some("Deply to GitHub Pages"),
-            ref = UseRef.Public("peaceiris", "actions-gh-pages", "v4"),
-            params = Map(
-              "github_token"  -> s"$${{ secrets.GITHUB_TOKEN }}",
-              "publish_dir"   -> "./public",
-              "cname"         -> "pillars.dev",
-              "enable_jekyll" -> "false"
-            )
-          )
-        )
+    ),
+    WorkflowStep.Use(
+      name = Some("Update CHANGELOG"),
+      id = Some("changelog"),
+      ref = UseRef.Public("requarks", "changelog-action", "v1"),
+      params = Map(
+        "token"       -> "${{ github.token }}",
+        "fromTag"     -> "${{ github.ref_name }}",
+        "toTag"       -> "${{ env.previousTag }}",
+        "writeToFile" -> "true"
+      )
+    ),
+    WorkflowStep.Use(
+      name = Some("Commit CHANGELOG.md"),
+      ref = UseRef.Public("stefanzweifel", "git-auto-commit-action", "v5"),
+      params = Map(
+        "commit_message" -> "docs: update CHANGELOG.md for ${{ env.nextTag }} [skip ci]",
+        "branch"         -> "main",
+        "file_pattern"   -> "CHANGELOG.md docToolchainConfig.groovy"
+      )
+    ),
+    WorkflowStep.Run(
+      name = Some("Create version tag"),
+      commands = List(
+        """git tag -a "v${{ env.nextTag }}" -m "Release ${{ env.nextTag }}" """,
+        """git push origin "v${{ env.nextTag }}""""
+      )
+    ),
+    WorkflowStep.Use(
+      name = Some("Create release"),
+      ref = UseRef.Public("ncipollo", "release-action", "v1.14.0"),
+      params = Map(
+        "allowUpdates" -> "true",
+        "draft"        -> "false",
+        "makeLatest"   -> "true",
+        "name"         -> "v${{ env.nextTag }}",
+        "tag"          -> "v${{ env.nextTag }}",
+        "body"         -> "${{ steps.changelog.outputs.changes }}",
+        "token"        -> "${{ github.token }}"
+      )
+    )
   )
 )
+val websitePublication = WorkflowJob(
+  id = "website",
+  name = "🌐 Publish website",
+  oses = List("ubuntu-latest"),
+  cond = Some("""github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v'))"""),
+  needs = List("publish"),
+  env = Map("DTC_HEADLESS" -> "true"),
+  permissions = Some(Permissions.Specify.defaultPermissive),
+  concurrency = Some(Concurrency(s"$${{ github.workflow }} @ $${{ github.ref }}", Some(true))),
+  steps = List(
+    WorkflowStep.Checkout,
+    WorkflowStep.Run(
+      name = Some("Setup"),
+      commands = List("chmod +x dtcw")
+    )
+  ) ++
+      WorkflowStep.SetupJava(List(JavaSpec.temurin("17"))) ++
+      List(
+        WorkflowStep.Run(
+          name = Some("Install docToolchain"),
+          commands = List("./dtcw local install doctoolchain")
+        ),
+        WorkflowStep.Use(
+          name = Some("Cache sbt"),
+          ref = UseRef.Public("actions", "cache", "v4"),
+          params = Map(
+            "path"         ->
+                """.ivy2
+                          |.sbt""".stripMargin,
+            "key"          -> s"sbt-$${{ hashFiles('build.sbt', 'plugins.sbt') }}",
+            "restore-keys" -> s"pillars-cache-$${{ hashFiles('build.sbt', 'plugins.sbt') }}"
+          )
+        ),
+        WorkflowStep.Run(
+          name = Some("Get latest version"),
+          id = Some("version"),
+          commands = List(
+            """PILLARS_VERSION="$(git ls-remote --tags $REPO | awk -F"/" '{print $3}' | grep '^v[0-9]*\\.[0-9]*\\.[0-9]*' | grep -v {} | sort --version-sort | tail -n1)""",
+            """echo "latest version is [$PILLARS_VERSION]"""",
+            """echo "version=${PILLARS_VERSION#v}" >> "$GITHUB_OUTPUT""""
+          )
+        ),
+        WorkflowStep.Run(
+          name = Some("Generate site"),
+          commands = List("""./dtcw local generateSite && sbt unidoc"""),
+          env = Map("PILLARS_VERSION" -> "${{ steps.version.outputs.version }}", "DTC_HEADLESS" -> "true")
+        ),
+        WorkflowStep.Run(
+          name = Some("Copy to public"),
+          commands = List("cp -r target/microsite/output ./public")
+        ),
+        WorkflowStep.Use(
+          name = Some("Deply to GitHub Pages"),
+          ref = UseRef.Public("peaceiris", "actions-gh-pages", "v4"),
+          params = Map(
+            "github_token"  -> s"$${{ secrets.GITHUB_TOKEN }}",
+            "publish_dir"   -> "./public",
+            "cname"         -> "pillars.dev",
+            "enable_jekyll" -> "false"
+          )
+        )
+      )
+)
+githubWorkflowTargetTags := List("prepare-v*", "v*")
+githubWorkflowGeneratedCI ++= List(releasePreparation, websitePublication)
 
 enablePlugins(ScalaUnidocPlugin)
 
