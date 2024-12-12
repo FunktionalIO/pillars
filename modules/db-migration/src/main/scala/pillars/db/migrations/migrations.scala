@@ -23,7 +23,6 @@ import pillars.Modules
 import pillars.ModuleSupport
 import pillars.Pillars
 import pillars.Run
-import pillars.db.DB
 import pillars.logger
 
 final case class DBMigration[F[_]: Async: Console: Tracer: Network: Files](
@@ -80,7 +79,7 @@ object DBMigration extends ModuleSupport:
     override type M[F[_]] = DBMigration[F]
     override val key: Module.Key = DBMigration.Key
 
-    override def dependsOn: Set[ModuleSupport] = Set(DB)
+    override def dependsOn: Set[ModuleSupport] = Set.empty
 
     def load[F[_]: Async: Network: Tracer: Console](
         context: ModuleSupport.Context[F],

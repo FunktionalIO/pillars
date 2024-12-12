@@ -84,10 +84,18 @@ lazy val core = module(
   "pillars-core is a scala 3 library providing base services for writing backend applications"
 )
 
+lazy val munit = module(
+  "munit",
+  "pillars.munit",
+  Dependencies.munit,
+  "pillars-munit is a scala 3 library providing munit services for writing backend applications"
+).dependsOn(core)
+
 lazy val dbSkunk = module(
   "db-skunk",
   "pillars.db",
   Dependencies.skunk ++
+      Dependencies.testContainers ++ // for test helpers
       Dependencies.tests,
   "pillars-db-skunk is a scala 3 library providing database services for writing backend applications using skunk"
 ).dependsOn(core)
@@ -114,16 +122,16 @@ lazy val dbMigrations = module(
   Dependencies.migrations ++
       Dependencies.migrationsRuntime ++
       Dependencies.tests ++
-      Dependencies.testContainers,
+      Dependencies.testContainersPostgres.map(_ % Test),
   "pillars-db-migration is a scala 3 library providing database migrations"
-).dependsOn(core, dbSkunk)
+).dependsOn(core, dbSkunk % "test->compile")
 
 lazy val rabbitmqFs2 = module(
   "rabbitmq-fs2",
   "pillars.rabbitmq.fs2",
   Dependencies.fs2Rabbit ++
       Dependencies.tests ++
-      Dependencies.testContainers,
+      Dependencies.testContainersRabbit.map(_ % Test),
   "pillars-rabbitmq-fs2 is a scala 3 library providing RabbitMQ services for writing backend applications using fs2-rabbit"
 ).dependsOn(core)
 
@@ -177,7 +185,7 @@ lazy val docs = Project("pillars-docs", file("modules/docs"))
 
 lazy val pillars = project
     .in(file("."))
-    .aggregate(core, example, docs, dbSkunk, dbDoobie, dbMigrations, flags, httpClient, rabbitmqFs2, redisRediculous)
+    .aggregate(core, munit, example, docs, dbSkunk, dbDoobie, dbMigrations, flags, httpClient, rabbitmqFs2, redisRediculous)
     .settings(sharedSettings)
     .settings(
       name                                       := "pillars",
