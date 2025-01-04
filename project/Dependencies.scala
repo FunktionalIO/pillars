@@ -13,7 +13,7 @@ object versions {
     val fs2              = "3.11.0"
     val fs2Rabbit        = "5.3.0"
     val http4s           = "0.23.30"
-    val http4sNetty      = "0.5.21"
+    val http4sNetty      = "0.5.22"
     val ip4s             = "3.6.0"
     val iron             = "2.6.0"
     val literally        = "1.2.0"
