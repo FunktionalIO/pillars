@@ -1,4 +1,4 @@
-addSbtPlugin("org.typelevel"            % "sbt-typelevel"             % "0.7.4")
+addSbtPlugin("org.typelevel"            % "sbt-typelevel"             % "0.7.5")
 // Build
 addSbtPlugin("com.timushev.sbt"         % "sbt-rewarn"                % "0.1.3")
 addSbtPlugin("com.github.cb372"         % "sbt-explicit-dependencies" % "0.3.1")
