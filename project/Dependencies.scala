@@ -13,7 +13,7 @@ object versions {
     val fs2              = "3.11.0"
     val fs2Rabbit        = "5.3.0"
     val http4s           = "0.23.30"
-    val http4sNetty      = "0.5.21"
+    val http4sNetty      = "0.5.22"
     val ip4s             = "3.6.0"
     val iron             = "2.6.0"
     val literally        = "1.2.0"
@@ -23,7 +23,7 @@ object versions {
     val rediculous       = "0.5.1"
     val scribe           = "3.15.3"
     val skunk            = "1.0.0-M8"
-    val tapir            = "1.11.10"
+    val tapir            = "1.11.11"
     val testContainers   = "0.41.5"
 
     object munit {
