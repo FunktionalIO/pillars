@@ -27,7 +27,7 @@ object versions {
     val testContainers   = "0.41.5"
 
     object munit {
-        val core       = "1.0.3"
+        val core       = "1.0.4"
         val catsEffect = "2.0.0"
         val scalacheck = "1.0.0"
         val http4s     = "1.1.0"
@@ -117,14 +117,20 @@ object Dependencies {
       "com.dimafeng" %% "testcontainers-scala-munit" % versions.testContainers
     )
 
-    val testContainersPostgres: Seq[ModuleID] = Seq(
-      "com.dimafeng" %% "testcontainers-scala-munit"      % versions.testContainers,
+    val testContainersJdbc: Seq[ModuleID] = testContainers ++ Seq(
+      "com.dimafeng" %% "testcontainers-scala-jdbc" % versions.testContainers
+    )
+
+    val testContainersPostgres: Seq[ModuleID] = testContainers ++ Seq(
       "com.dimafeng" %% "testcontainers-scala-postgresql" % versions.testContainers
     )
 
-    val testContainersRabbit: Seq[ModuleID] = Seq(
-      "com.dimafeng" %% "testcontainers-scala-munit"    % versions.testContainers,
+    val testContainersRabbit: Seq[ModuleID] = testContainers ++ Seq(
       "com.dimafeng" %% "testcontainers-scala-rabbitmq" % versions.testContainers
+    )
+
+    val testContainersRedis: Seq[ModuleID] = testContainers ++ Seq(
+      "com.dimafeng" %% "testcontainers-scala-redis" % versions.testContainers
     )
 
     val observability: Seq[ModuleID] = Seq(

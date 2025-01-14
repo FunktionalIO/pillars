@@ -63,6 +63,10 @@ object DB extends ModuleSupport:
         yield DB(config, xa)
         end for
     end load
+
+    def load[F[_]: Async: Network: Tracer: Console](config: DatabaseConfig): Resource[F, DB[F]] =
+        HikariTransactor.fromHikariConfig[F](config.toHikariConfig).map(xa => DB(config, xa))
+    end load
 end DB
 
 final case class DatabaseConfig(

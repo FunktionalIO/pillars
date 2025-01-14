@@ -52,6 +52,7 @@ trait ModuleSupport:
         context: ModuleSupport.Context[F],
         modules: Modules[F] = Modules.empty
     ): Resource[F, M[F]]
+
 end ModuleSupport
 
 object ModuleSupport:

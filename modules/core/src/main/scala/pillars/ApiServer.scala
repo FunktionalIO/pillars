@@ -70,4 +70,6 @@ object ApiServer:
       port = port"9876",
       logging = Logging.HttpConfig()
     )
+
+    def noop[F[_]: Async]: ApiServer[F] = _ => Async[F].unit
 end ApiServer

@@ -64,27 +64,33 @@ object DB extends ModuleSupport:
         for
             _       <- Resource.eval(logger.info("Loading DB module"))
             config  <- Resource.eval(reader.read[DatabaseConfig]("db"))
-            poolRes <- Session.pooled[F](
-                         host = config.host.toString,
-                         port = config.port.value,
-                         database = config.database,
-                         user = config.username,
-                         password = config.password.some.map(_.value),
-                         max = config.poolSize,
-                         debug = config.debug,
-                         strategy = config.typerStrategy,
-                         parameters = Session.DefaultConnectionParameters ++ config.extraParameters,
-                         commandCache = config.commandCache,
-                         queryCache = config.queryCache,
-                         parseCache = config.parseCache,
-                         readTimeout = config.readTimeout,
-                         redactionStrategy = config.redactionStrategy,
-                         ssl = config.ssl
-                       )
+            poolRes <- createPool(config)
             _       <- Resource.eval(logger.info("DB module loaded"))
         yield DB(config, poolRes)
         end for
     end load
+
+    private def createPool[F[_]: Async: Network: Tracer: Console](config: DatabaseConfig) =
+        Session.pooled[F](
+          host = config.host.toString,
+          port = config.port.value,
+          database = config.database,
+          user = config.username,
+          password = config.password.some.map(_.value),
+          max = config.poolSize,
+          debug = config.debug,
+          strategy = config.typerStrategy,
+          parameters = Session.DefaultConnectionParameters ++ config.extraParameters,
+          commandCache = config.commandCache,
+          queryCache = config.queryCache,
+          parseCache = config.parseCache,
+          readTimeout = config.readTimeout,
+          redactionStrategy = config.redactionStrategy,
+          ssl = config.ssl
+        )
+
+    def load[F[_]: Async: Network: Tracer: Console](config: DatabaseConfig): Resource[F, DB[F]] =
+        createPool(config).map(pool => DB(config, pool))
 end DB
 
 final case class DatabaseConfig(

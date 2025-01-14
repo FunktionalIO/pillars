@@ -67,21 +67,27 @@ object Redis extends ModuleSupport:
         for
             _         <- Resource.eval(logger.info("Loading Redis module"))
             config    <- Resource.eval(reader.read[RedisConfig]("redis"))
-            connection = Redis(
-                           config,
-                           RedisConnection.queued[F]
-                               .withHost(config.host)
-                               .withPort(config.port)
-                               .withMaxQueued(config.maxQueue)
-                               .withWorkers(config.workers)
-                               .withAuth(config.username, config.password)
-                               .withTLS
-                               .build
-                         )
+            connection = create(config)
             _         <- Resource.eval(logger.info("Redis module loaded"))
         yield connection
         end for
     end load
+    def load[F[_]: Async: Network: Tracer: Console](config: RedisConfig): Resource[F, Redis[F]] =
+        create(config).pure[Resource[F, *]]
+    end load
+
+    private def create[F[_]: Async: Network: Tracer: Console](config: RedisConfig) =
+        val builder = RedisConnection.queued[F]
+            .withHost(config.host)
+            .withPort(config.port)
+            .withMaxQueued(config.maxQueue)
+            .withWorkers(config.workers)
+            .withTLS
+        Redis(
+          config,
+          config.password.fold(builder)(pwd => builder.withAuth(config.username, pwd)).build
+        )
+    end create
 end Redis
 
 final case class RedisConfig(
@@ -90,7 +96,7 @@ final case class RedisConfig(
     maxQueue: Int = Defaults.maxQueued,
     workers: Int = Defaults.workers,
     username: Option[RedisUser],
-    password: RedisPassword,
+    password: Option[RedisPassword],
     probe: ProbeConfig
 ) extends pillars.Config
 
