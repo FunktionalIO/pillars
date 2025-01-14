@@ -45,7 +45,7 @@ object Observability:
         Observability(Tracer.noop[F], Meter.noop[F], EndpointInterceptor.noop[F]).pure[F]
 
     def init[F[_]: LiftIO: Async: Parallel: Console](appInfo: AppInfo, config: Config): Resource[F, Observability[F]] =
-        if config.enabled && (config.traces.enabled || config.metrics.enabled) then
+        if config.isEnabled then
             for
                 otel4s       <- OpenTelemetrySdk.autoConfigured[F]: builder =>
                                     builder
@@ -75,7 +75,8 @@ object Observability:
         metrics: Config.Metrics = Config.Metrics(),
         traces: Config.Traces = Config.Traces(),
         serviceName: ServiceName = ServiceName("pillars")
-    ) extends pillars.Config
+    ) extends pillars.Config:
+        def isEnabled: Boolean = enabled && (metrics.enabled || traces.enabled)
 
     object Config:
         given Configuration = Configuration.default.withKebabCaseMemberNames.withKebabCaseConstructorNames.withDefaults
