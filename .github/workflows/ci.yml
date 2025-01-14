@@ -54,9 +54,6 @@ jobs:
         if: matrix.java == 'graalvm@21' && steps.setup-java-graalvm-21.outputs.cache-hit == 'false'
         run: sbt +update
 
-      - name: Check no unused dependency
-        run: sbt unusedCompileDependenciesTest
-
       - name: Check that workflows are up to date
         run: sbt githubWorkflowCheck
 

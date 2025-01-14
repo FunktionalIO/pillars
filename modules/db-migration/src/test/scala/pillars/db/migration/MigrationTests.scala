@@ -6,7 +6,6 @@ package pillars.db.migration
 
 import cats.effect.IO
 import com.dimafeng.testcontainers.PostgreSQLContainer
-import com.dimafeng.testcontainers.munit.TestContainerForEach
 import io.github.iltotore.iron.*
 import org.testcontainers.utility.DockerImageName
 import org.typelevel.otel4s.trace.Tracer

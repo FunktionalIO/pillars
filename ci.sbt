@@ -142,4 +142,4 @@ val websitePublication = WorkflowJob(
 )
 
 ThisBuild / githubWorkflowGeneratedCI ++= List(releasePreparation, websitePublication)
-ThisBuild / githubWorkflowPublishNeeds  := List("prepare-release")
+ThisBuild / githubWorkflowPublishNeeds := List("prepare-release")
