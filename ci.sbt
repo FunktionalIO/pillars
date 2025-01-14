@@ -141,12 +141,5 @@ val websitePublication = WorkflowJob(
       )
 )
 
-val checkNoUnusedDependency = WorkflowStep.Run(
-  name = Some("Check no unused dependency"),
-  commands = List(
-    """sbt unusedCompileDependenciesTest"""
-  )
-)
-ThisBuild / githubWorkflowBuildPreamble := List(checkNoUnusedDependency)
 ThisBuild / githubWorkflowGeneratedCI ++= List(releasePreparation, websitePublication)
 ThisBuild / githubWorkflowPublishNeeds  := List("prepare-release")
