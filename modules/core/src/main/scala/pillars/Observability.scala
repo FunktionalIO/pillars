@@ -77,6 +77,7 @@ object Observability:
         serviceName: ServiceName = ServiceName("pillars")
     ) extends pillars.Config:
         def isEnabled: Boolean = enabled && (metrics.enabled || traces.enabled)
+    end Config
 
     object Config:
         given Configuration = Configuration.default.withKebabCaseMemberNames.withKebabCaseConstructorNames.withDefaults
