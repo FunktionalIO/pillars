@@ -79,7 +79,7 @@ object Observability:
     ) extends pillars.Config:
         def isEnabled: Boolean = enabled && (metrics.enabled || traces.enabled)
 
-        def getCustomAttributes: Seq[Attribute[String]] = customAttributes.map((k, v) => Attribute(k, v)).toSeq
+        def getCustomAttributes: Seq[Attribute[String]] = customAttributes.map((k, v) => v.toAttribute(k)).toSeq
     end Config
 
     object Config:
