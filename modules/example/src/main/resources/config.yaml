@@ -77,6 +77,8 @@ admin:
 observability:
   enabled: true
   service-name: bookstore
+  custom-attributes:
+    datacenter: ${DATACENTER}
   metrics:
     enabled: true
   traces:

@@ -24,6 +24,19 @@ You can configure the following settings in the `application.conf` file:
 include::{projectRootDir}/modules/example/src/main/resources/config.yaml[tag=observability]
 ----
 
+=== Global attributes
+
+By default, the following attributes are added to all metrics & traces:
+
+[cols="1,1,1"]
+|===
+| Attribute | Description | Type
+
+| `service.name` | The service name coming from AppInfo | String
+| `service.version` | The service version also coming from AppInfo | String
+|===
+
+With the config `custom-attributes` you can add custom attributes to all metrics & traces
 
 === Metrics
 
