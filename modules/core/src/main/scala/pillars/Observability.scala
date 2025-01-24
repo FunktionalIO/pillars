@@ -56,7 +56,7 @@ object Observability:
                                                   OtelAttributes(
                                                     appInfo.name.toAttribute("service.name"),
                                                     appInfo.version.toAttribute("service.version")
-                                                  )
+                                                  ) ++ config.getCustomAttributes
                                                 )
                                             resource.mergeUnsafe(configured)
                 sdk           = otel4s.sdk
@@ -74,9 +74,12 @@ object Observability:
         enabled: Boolean = false,
         metrics: Config.Metrics = Config.Metrics(),
         traces: Config.Traces = Config.Traces(),
-        serviceName: ServiceName = ServiceName("pillars")
+        serviceName: ServiceName = ServiceName("pillars"),
+        customAttributes: Map[String, String] = Map.empty
     ) extends pillars.Config:
         def isEnabled: Boolean = enabled && (metrics.enabled || traces.enabled)
+
+        def getCustomAttributes: Seq[Attribute[String]] = customAttributes.map((k, v) => Attribute(k, v)).toSeq
     end Config
 
     object Config:
