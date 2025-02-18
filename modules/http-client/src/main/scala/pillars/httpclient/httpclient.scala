@@ -109,6 +109,7 @@ object HttpClient extends ModuleSupport:
                            .withHttp2
                            .withNioTransport
                            .withUserAgent(conf.userAgent)
+                           .withMaxConnectionsPerKey(conf.maxConnections)
                            .resource
                            .map: client =>
                                val logging        =
@@ -132,6 +133,7 @@ object HttpClient extends ModuleSupport:
     end load
 
     final case class Config(
+        maxConnections: Int = 10,
         followRedirect: Boolean = true,
         userAgent: `User-Agent` = Config.defaultUserAgent,
         logging: Logging.HttpConfig = Logging.HttpConfig()
