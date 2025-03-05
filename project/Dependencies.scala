@@ -23,7 +23,7 @@ object versions {
     val rediculous       = "0.5.1"
     val scribe           = "3.16.0"
     val skunk            = "1.0.0-M10"
-    val tapir            = "1.11.14"
+    val tapir            = "1.11.17"
     val testContainers   = "0.41.8"
 
     object munit {
