@@ -29,7 +29,7 @@ import scala.language.postfixOps
 trait $Prefix$Client[F[_]]
 
 extension [F[_]](p: Pillars[F])
-def $lowerCaseModuleName$[F[_]](using p: Pillars[F]): $Prefix$[F] = p.module[$Prefix$[F]]($Prefix$.Key)
+    def $lowerCaseModuleName$[F[_]](using p: Pillars[F]): $Prefix$[F] = p.module[$Prefix$[F]]($Prefix$.Key)
 
 final case class $Prefix$[F[_]: Async](client: $Prefix$Client[F]) extends Module[F]:
     export client.*
