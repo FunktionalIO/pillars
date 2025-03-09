@@ -1,4 +1,5 @@
 import xerial.sbt.Sonatype.GitHubHosting
+import xerial.sbt.Sonatype.sonatypeCentralHost
 
 ThisBuild / tlBaseVersion := "0.4" // your current series x.y
 
@@ -11,7 +12,7 @@ ThisBuild / developers ++= List(
   tlGitHubDev("rlemaitre", "Raphaël Lemaitre")
 )
 
-//ThisBuild / sonatypeCredentialHost := sonatypeCentralHost
+ThisBuild / sonatypeCredentialHost := sonatypeCentralHost
 ThisBuild / sonatypeProjectHosting := Some(GitHubHosting(
   "FunktionalIO",
   "pillars",
