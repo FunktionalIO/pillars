@@ -2,7 +2,7 @@ import xerial.sbt.Sonatype.GitHubHosting
 
 ThisBuild / tlBaseVersion := "0.4" // your current series x.y
 
-ThisBuild / organization := "com.rlemaitre"
+ThisBuild / organization := "io.funktional"
 ThisBuild / homepage     := Some(url("https://pillars.dev"))
 ThisBuild / startYear    := Some(2023)
 ThisBuild / licenses     := Seq("EPL-2.0" -> url("https://www.eclipse.org/legal/epl-2.0/"))
@@ -266,7 +266,7 @@ lazy val pillars = project
         version.value,
         "-project-logo",
         "modules/docs/src/docs/images/logo.png",
-        //    "-source-links:github://rlemaitre/pillars",
+        //    "-source-links:github://FunktionalIO/pillars",
         "-social-links:github::https://github.com/FunktionalIO/pillars"
       ),
       unusedCompileDependenciesFilter -= moduleFilter("org.typelevel", "scalac-compat-annotation")

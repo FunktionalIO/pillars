@@ -27,7 +27,7 @@ To use the latest version, include the following in your `build.sbt`:
 [source,scala]
 --
 libraryDependencies ++= Seq(
-  "com.rlemaitre" %% "pillars" % "@VERSION@"
+  "io.funktional" %% "pillars" % "@VERSION@"
 )
 --
 

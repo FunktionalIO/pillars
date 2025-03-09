@@ -27,7 +27,7 @@
     <meta content="Pillars" itemprop="name">
     <meta content="Build your backend service in Scala 3 the easy way" itemprop="description">
     <meta content="summary" name="twitter:card">
-    <meta content="@rlemaitre" name="twitter:creator">
+    <meta content="@rlemaitre.com" name="twitter:creator">
     <meta content="Pillars" name="twitter:title">
     <meta content="Build your backend service in Scala 3 the easy way" name="twitter:description">
     <meta property="og:url" content="https://pillars.dev/" />

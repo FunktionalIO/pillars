@@ -2,7 +2,7 @@
 Creator: Raphaël Lemaitre
 Site: https://rlemaitre.com
 Contact: contact [at] rlemaitre [dot] com
-Twitter: @rlemaitre
+Bluesky: @rlemaitre.com
 Location: Paris, France
 
 /* THANKS */

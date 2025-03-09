@@ -43,18 +43,18 @@ end app
                 <li class="tab" data-tab="maven">Maven</li>
             </ul>
             <pre class="code tab__pane active sbt">
-                <code class="highlight language-scala">libraryDependencies ++= Seq("com.rlemaitre" %% "pillars-core" % "${config.site_version}")</code>
+                <code class="highlight language-scala">libraryDependencies ++= Seq("io.funktional" %% "pillars-core" % "${config.site_version}")</code>
             </pre>
             <pre class="code tab__pane mill">
-                <code class="highlight language-scala">ivy"com.rlemaitre::pillars-core:${config.site_version}"</code>
+                <code class="highlight language-scala">ivy"io.funktional::pillars-core:${config.site_version}"</code>
             </pre>
             <pre class="code tab__pane scala-cli">
-                <code class="highlight language-scala">//> using dep com.rlemaitre::pillars-core:${config.site_version}</code>
+                <code class="highlight language-scala">//> using dep io.funktional::pillars-core:${config.site_version}</code>
             </pre>
             <pre class="code tab__pane pants">
                 <code class="highlight language-scala">
 scala_artifact(
-    group="com.rlemaitre",
+    group="io.funktional",
     artifact="pillars-core",
     version="${config.site_version}",
     packages=["pillars.**"],
@@ -62,12 +62,12 @@ scala_artifact(
                 </code>
             </pre>
             <pre class="code tab__pane gradle">
-                <code class="highlight language-gradle">implementation 'com.rlemaitre:pillars-core:${config.site_version}'</code>
+                <code class="highlight language-gradle">implementation 'io.funktional:pillars-core:${config.site_version}'</code>
             </pre>
             <pre class="code tab__pane maven">
                 <code class="highlight language-xml">
 &lt;dependency>
-    &lt;groupId>com.rlemaitre&lt;/groupId>
+    &lt;groupId>io.funktional&lt;/groupId>
     &lt;artifactId>pillars-core&lt;/artifactId>
     &lt;version>${config.site_version}&lt;/version>
 &lt;/dependency>
