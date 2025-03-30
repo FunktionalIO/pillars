@@ -5,7 +5,6 @@
 package pillars.db
 
 import cats.effect.*
-import cats.effect.std.Console
 import cats.syntax.all.*
 import com.comcast.ip4s.*
 import fs2.io.file.Files
@@ -32,18 +31,17 @@ import skunk.codec.all.*
 import skunk.implicits.*
 import skunk.util.Typer
 
-def sessions[F[_]](using p: Pillars[F]): DB[F] = p.module[DB[F]](DB.Key)
+def sessions(using p: Pillars): DB = p.module[DB](DB.Key)
 
-final case class DB[F[_]: Async: Network: Tracer: Console](config: DatabaseConfig, pool: Resource[F, Session[F]])
-    extends Module[F]:
+final case class DB(config: DatabaseConfig, pool: Resource[IO, Session[IO]]) extends Module:
 
     override type ModuleConfig = DatabaseConfig
     export pool.*
 
-    override def probes: List[Probe[F]] =
-        val probe = new Probe[F]:
+    override def probes: List[Probe] =
+        val probe = new Probe:
             override def component: Component = Component(Component.Name("db"), Component.Type.Datastore)
-            override def check: F[Boolean]    = pool.use(session => session.unique(sql"select true".query(bool)))
+            override def check: IO[Boolean]   = pool.use(session => session.unique(sql"select true".query(bool)))
         probe.pure[List]
     end probes
 end DB
@@ -52,15 +50,13 @@ object DB extends ModuleSupport:
     case object Key extends Module.Key:
         override val name: String = "db"
 
-    override type M[F[_]] = DB[F]
+    override type M = DB
     override val key: Module.Key = DB.Key
 
-    def load[F[_]: Async: Network: Tracer: Console](
-        context: ModuleSupport.Context[F],
-        modules: Modules[F]
-    ): Resource[F, DB[F]] =
+    def load(context: ModuleSupport.Context, modules: Modules): Resource[IO, DB] =
         import context.*
-        given Files[F] = Files.forAsync[F]
+        given Files[IO]  = Files.forIO
+        given Tracer[IO] = context.observability.tracer
         for
             _       <- Resource.eval(logger.info("Loading DB module"))
             config  <- Resource.eval(reader.read[DatabaseConfig]("db"))
@@ -70,8 +66,8 @@ object DB extends ModuleSupport:
         end for
     end load
 
-    private def createPool[F[_]: Async: Network: Tracer: Console](config: DatabaseConfig) =
-        Session.pooled[F](
+    private def createPool(config: DatabaseConfig)(using Tracer[IO]) =
+        Session.pooled[IO](
           host = config.host.toString,
           port = config.port.value,
           database = config.database,
@@ -89,7 +85,7 @@ object DB extends ModuleSupport:
           ssl = config.ssl
         )
 
-    def load[F[_]: Async: Network: Tracer: Console](config: DatabaseConfig): Resource[F, DB[F]] =
+    def load(config: DatabaseConfig)(using Tracer[IO]): Resource[IO, DB] =
         createPool(config).map(pool => DB(config, pool))
 end DB
 

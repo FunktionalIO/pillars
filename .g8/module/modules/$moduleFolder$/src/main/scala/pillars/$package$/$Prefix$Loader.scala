@@ -1,8 +1,7 @@
 package pillars.$package$
 
-import cats.effect.Async
+import cats.effect.IO
 import cats.effect.Resource
-import cats.effect.std.Console
 import cats.syntax.applicative.*
 import com.comcast.ip4s.Host
 import com.comcast.ip4s.Port
@@ -26,19 +25,19 @@ import pillars.probes.Component
 import pillars.probes.Probe
 import scala.language.postfixOps
 
-trait $Prefix$Client[F[_]]
+trait $Prefix$Client
 
-extension [F[_]](p: Pillars[F])
-    def $lowerCaseModuleName$[F[_]](using p: Pillars[F]): $Prefix$[F] = p.module[$Prefix$[F]]($Prefix$.Key)
+extension (p: Pillars)
+    def $lowerCaseModuleName$(using p: Pillars): $Prefix$ = p.module[$Prefix$]($Prefix$.Key)
 
-final case class $Prefix$[F[_]: Async](client: $Prefix$Client[F]) extends Module[F]:
+final case class $Prefix$(client: $Prefix$Client) extends Module:
     export client.*
 
-    override def probes: List[Probe[F]] =
-        val probe = new Probe[F]:
+    override def probes: List[Probe] =
+        val probe = new Probe:
             override def component: Component =
                 Component(Component.Name("$lowerCaseModuleName$"), Component.Type.Datastore)
-            override def check: F[Boolean]    = true.pure[F]
+            override def check: IO[Boolean]    = true.pure[IO]
         probe.pure[List]
     end probes
 end $Prefix$
@@ -47,27 +46,24 @@ object $Prefix$ :
     case object Key extends Module.Key:
         override val name: String = "$lowerCaseModuleName$"
 
-    def apply[F[_]](using p: Pillars[F]): $Prefix$[F] = p.module[$Prefix$[F]]($Prefix$.Key)
+    def apply(using p: Pillar): $Prefix$ = p.module[$Prefix$]($Prefix$.Key)
 
-    def apply[F[_]: Async](config: $Prefix$Config): Resource[F, $Prefix$[F]] =
+    def apply(config: $Prefix$Config): Resource[IO, $Prefix$] =
         ??? // Implement your client creation here
 
 end $Prefix$
 
 object $Prefix$Module extends ModuleDef:
-    override type M[F[_]] = $Prefix$[F]
+    override type M = $Prefix$
     override val key: Module.Key = $Prefix$.Key
 
-    override def load[F[_]: Async: Network: Tracer: Console](
-        context: Loader.Context[F],
-        modules: Modules[F]
-    ): Resource[F, $Prefix$[F]] =
+    override def load(context: Loader.Context, modules: Modules[F]): Resource[IO, $Prefix$] =
         import context.*
-        given Files[F] = Files.forAsync[F]
+        given Files[IO] = Files.forIO
         for
             _      <- Resource.eval(logger.info("Loading $Prefix$ module"))
             config <- Resource.eval(configReader.read[$Prefix$Config]("$lowerCaseModuleName$"))
-            client <- $Prefix$[F](config)
+            client <- $Prefix$(config)
             _      <- Resource.eval(logger.info("$Prefix$ module loaded"))
         yield client
         end for

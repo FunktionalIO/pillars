@@ -4,9 +4,8 @@
 
 package pillars
 
-import cats.effect.Async
+import cats.effect.IO
 import cats.effect.Resource
-import cats.syntax.all.*
 import com.comcast.ip4s.*
 import io.circe.Codec
 import io.circe.derivation.Configuration
@@ -39,17 +38,17 @@ import sttp.tapir.swagger.SwaggerUIOptions
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 
 object HttpServer:
-    def build[F[_]: Async](
+    def build(
         name: String,
         config: Config,
         openApi: Config.OpenAPI,
         infos: AppInfo,
-        observability: Observability[F],
-        endpoints: List[HttpEndpoint[F]]
-    ): Resource[F, Server] =
-        val cors: HttpApp[F] => HttpApp[F] = CORS.policy.httpApp[F]
+        observability: Observability,
+        endpoints: List[HttpEndpoint]
+    ): Resource[IO, Server] =
+        val cors: HttpApp[IO] => HttpApp[IO] = CORS.policy.httpApp[IO]
 
-        val errorHandling: HttpApp[F] => HttpApp[F] = ErrorHandling.Custom.recoverWith(_):
+        val errorHandling: HttpApp[IO] => HttpApp[IO] = ErrorHandling.Custom.recoverWith(_):
             case e: PillarsError =>
                 observability.recordException(e).map: _ =>
                     Response(
@@ -64,16 +63,16 @@ object HttpServer:
 
         val logging =
             if config.logging.enabled then
-                Logger.httpApp[F](
+                Logger.httpApp[IO](
                   logHeaders = config.logging.headers,
                   logBody = config.logging.body,
                   logAction = config.logging.logAction
                 )
-            else identity[HttpApp[F]]
+            else identity[HttpApp[IO]]
 
-        val options: Http4sServerOptions[F] =
+        val options: Http4sServerOptions[IO] =
             Http4sServerOptions
-                .customiseInterceptors
+                .customiseInterceptors[IO]
                 .prependInterceptor(observability.interceptor)
                 .prependInterceptor(Traces(observability.tracer))
                 .exceptionHandler(exceptionHandler(observability.tracer))
@@ -91,22 +90,22 @@ object HttpServer:
             ).fromServerEndpoints(endpoints, name, infos.version)
         else Nil
 
-        val routes = Http4sServerInterpreter[F](options).toRoutes(endpoints ++ openAPIEndpoints).orNotFound
+        val routes = Http4sServerInterpreter[IO](options).toRoutes(endpoints ++ openAPIEndpoints).orNotFound
 
-        val app: HttpApp[F] = routes |> logging |> errorHandling |> cors
+        val app: HttpApp[IO] = routes |> logging |> errorHandling |> cors
 
-        NettyServerBuilder[F].withoutSsl.withNioTransport
+        NettyServerBuilder[IO].withoutSsl.withNioTransport
             .bindHttp(config.port.value, config.host.toString)
             .withHttpApp(app)
             .withoutBanner
             .resource
     end build
 
-    private def exceptionHandler[F[_]: Async](tracer: Tracer[F]): ExceptionHandler[F] =
-        new ExceptionHandler[F]:
+    private def exceptionHandler(tracer: Tracer[IO]): ExceptionHandler[IO] =
+        new ExceptionHandler[IO]:
             override def apply(ctx: ExceptionContext)(implicit
-                monad: MonadError[F]
-            ): F[Option[ValuedEndpointOutput[?]]] =
+                monad: MonadError[IO]
+            ): IO[Option[ValuedEndpointOutput[?]]] =
                 def handlePillarsError(e: PillarsError) =
                     Some(ValuedEndpointOutput(statusCode.and(jsonBody[PillarsError.View]), (e.status, e.view)))
                 tracer

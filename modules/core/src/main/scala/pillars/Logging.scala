@@ -6,7 +6,6 @@ package pillars
 
 import cats.Show
 import cats.effect.*
-import cats.syntax.all.*
 import fs2.io.file.Path
 import io.circe.*
 import io.circe.derivation.Configuration
@@ -23,23 +22,20 @@ import scribe.mdc.MDC
 import scribe.writer.ConsoleWriter
 import scribe.writer.Writer
 
-def logger[F[_]](using p: Pillars[F]): Scribe[F] = p.logger
+def logger(using p: Pillars): Scribe[IO] = p.logger
 
 object Logging:
-    def init[F[_]: Sync](config: Config): F[Unit] =
-        Sync[F]
-            .delay(
-              scribe.Logger.root
-                  .clearHandlers()
-                  .clearModifiers()
-                  .withHandler(
-                    formatter = config.format.formatter,
-                    minimumLevel = Some(config.level),
-                    writer = writer(config)
-                  )
-                  .replace()
-            )
-            .void
+    def init(config: Config): IO[Unit] =
+        IO.delay(
+          scribe.Logger.root
+              .clearHandlers()
+              .clearModifiers()
+              .withHandler(
+                formatter = config.format.formatter,
+                minimumLevel = Some(config.level),
+                writer = writer(config)
+              ).replace()
+        ).void
 
     private def writer(config: Config): Writer =
         config.format match
@@ -149,7 +145,7 @@ object Logging:
         headers: Boolean = false,
         body: Boolean = true
     ) extends pillars.Config:
-        def logAction[F[_]: Sync]: Option[String => F[Unit]] = Some(scribe.cats.effect[F].log(level, MDC.instance, _))
+        def logAction: Option[String => IO[Unit]] = Some(scribe.cats.effect[IO].log(level, MDC.instance, _))
     end HttpConfig
 
     object HttpConfig:

@@ -60,7 +60,7 @@ include::{projectRootDir}/modules/example/src/main/scala/example/app.scala[tag=q
 It is used by the admin server to display information about your application.
 See <<Application Metadata>> for more information.
 <3> The `run` is the entry point of your application.
-Thanks to the `Run[F[_], T]` context function, you have access to a `Pillars[F]` instance that contains all your modules.
+Thanks to the `Run[T]` context function, you have access to a `Pillars` instance that contains all your modules.
 <4> Each module is accessible through the `Pillars` instance or through a top-level function in the module's package.
 The `dbMigration.migrate` function is a top-level function that is provided by the `db-migration` module.
 <5> The API server must be started with the `server.start` function with the controllers you want to expose.
@@ -112,7 +112,7 @@ $ curl http://localhost:19876/admin/probes/health | jq
 
 === Application Metadata
 
-The `infos` property of the `App[F]` trait defines some metadata about your application.
+The `infos` property of the `App` trait defines some metadata about your application.
 You have two ways of defining it:
 
 You can directly create an instance of `AppInfo`:
@@ -156,5 +156,5 @@ Then, you can use the `BuildInfo` object in your application:
 import example.build.BuildInfo
 
   override val infos = BuildInfo.toAppInfo
-  override def run(): Run[IO, IO[Unit]] = ???
+  override def run(): Run[IO[Unit]] = ???
 ----

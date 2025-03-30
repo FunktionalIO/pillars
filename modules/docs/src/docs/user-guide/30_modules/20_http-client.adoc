@@ -33,31 +33,31 @@ To use the `HttpClient` module, you need to import it and then access it using t
 --
 import pillars.httpclient.*
 
-http.get("some.uri.com") // with a `Pillars[IO]` in scope
+http.get("some.uri.com") // with a `Pillars` in scope
 --
 
 === HTTP Operations
 
 The `HttpClient` module provides methods for sending HTTP requests and receiving HTTP responses.
-You can use the `httpClient` extension method on `Pillars` to get an instance of `Client[F]`:
+You can use the `httpClient` extension method on `Pillars` to get an instance of `Client[IO]`:
 
 [source,scala,linenums,role="data-noescape"]
 --
 import org.http4s.client.Client
 
-val client: Client[F] = http.client
+val client: Client[IO] = http.client
 --
 
-This `Client[F]` instance can be used to send HTTP requests by using the same methods as `org.http4s.client.Client[F]`.
+This `Client[IO]` instance can be used to send HTTP requests by using the same methods as `org.http4s.client.Client[IO]`.
 
-In addition to `org.http4s.client.Client[F]` methods, the `HttpClient` module provides methods to directly call a tapir endpoint:
+In addition to `org.http4s.client.Client[IO]` methods, the `HttpClient` module provides methods to directly call a tapir endpoint:
 
 * `call`: Calls a tapir public endpoint with the specified input and returns either the output or the error output.
 * `callSecure`: Calls a tapir secure endpoint with the specified input and security input and returns either the output or the error output.
 
 [source,scala,linenums]
 --
-val client = Pillars[F].httpClient
+val client = Pillars.httpClient
 val public: PublicEndpoint[Input, ErrorOutput, Output, Capabilities] = ???
 val secure: Endpoint[SecurityInput, Input, ErrorOutput, Output, Capabilities] = ???
 
@@ -65,8 +65,8 @@ val uri: Option[Uri] = ???
 val input: Input = ???
 val securityInput: SecurityInput = ???
 
-val output: F[Either[ErrorOutput, Output]] = client.call(public, uri)(input)
-val secureOutput: F[Either[ErrorOutput, Output]] = client.callSecure(secure)(securityInput, input)
+val output: IO[Either[ErrorOutput, Output]] = client.call(public, uri)(input)
+val secureOutput: IO[Either[ErrorOutput, Output]] = client.callSecure(secure)(securityInput, input)
 --
 
 If an infrastructure error occurs, a `HttpClient.Error` will be thrown on the error channel.

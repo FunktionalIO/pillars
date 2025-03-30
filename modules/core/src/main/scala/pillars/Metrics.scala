@@ -4,18 +4,13 @@
 
 package pillars
 
-import cats.Applicative
-import cats.Monad
+import cats.effect.IO
 import cats.syntax.all.*
 import java.time.Duration
 import java.time.Instant
 import org.typelevel.otel4s.Attribute
 import org.typelevel.otel4s.AttributeKey
-import org.typelevel.otel4s.metrics.BucketBoundaries
-import org.typelevel.otel4s.metrics.Counter
-import org.typelevel.otel4s.metrics.Histogram
-import org.typelevel.otel4s.metrics.Meter
-import org.typelevel.otel4s.metrics.UpDownCounter
+import org.typelevel.otel4s.metrics.*
 import sttp.monad.MonadError
 import sttp.tapir.AnyEndpoint
 import sttp.tapir.model.ServerRequest
@@ -25,10 +20,10 @@ import sttp.tapir.server.metrics.Metric
 import sttp.tapir.server.metrics.MetricLabels
 import sttp.tapir.server.model.ServerResponse
 
-case class Metrics[F[_]: Applicative](meter: Meter[F], metrics: List[Metric[F, ?]]):
+case class Metrics(meter: Meter[IO], metrics: List[Metric[IO, ?]]):
     /** The interceptor which can be added to a server's options, to enable metrics collection. */
-    def metricsInterceptor(ignoreEndpoints: Seq[AnyEndpoint] = Seq.empty): MetricsRequestInterceptor[F] =
-        new MetricsRequestInterceptor[F](metrics, ignoreEndpoints)
+    def metricsInterceptor(ignoreEndpoints: Seq[AnyEndpoint] = Seq.empty): MetricsRequestInterceptor[IO] =
+        new MetricsRequestInterceptor[IO](metrics, ignoreEndpoints)
 end Metrics
 
 object Metrics:
@@ -72,46 +67,46 @@ object Metrics:
     * Status is by default the status code class (1xx, 2xx, etc.), and phase can be either `headers` or `body` - request duration is
     * measured separately up to the point where the headers are determined, and then once again when the whole response body is complete.
     */
-    def init[F[_]: Monad](meter: Meter[F]): F[Metrics[F]] =
+    def init(meter: Meter[IO]): IO[Metrics] =
         for
             active       <- requestActive(meter)
             total        <- requestTotal(meter)
             duration     <- requestDuration(meter)
             requestSize  <- requestBodySize(meter)
             responseSize <- responseBodySize(meter)
-        yield Metrics(meter, List[Metric[F, ?]](active, total, duration))
+        yield Metrics(meter, List[Metric[IO, ?]](active, total, duration))
 
-    def init[F[_]: Applicative](meter: Meter[F], metrics: List[Metric[F, ?]]): F[Metrics[F]] =
-        Metrics(meter, metrics).pure[F]
+    def init(meter: Meter[IO], metrics: List[Metric[IO, ?]]): IO[Metrics] =
+        Metrics(meter, metrics).pure[IO]
 
-    def noop[F[_]: Applicative]: Metrics[F] = Metrics(Meter.noop[F], Nil)
+    def noop: Metrics = Metrics(Meter.noop[IO], Nil)
 
-    private def decreaseCounter[F[_]](
+    private def decreaseCounter(
         req: ServerRequest,
-        counter: UpDownCounter[F, Long],
-        m: MonadError[F],
+        counter: UpDownCounter[IO, Long],
+        m: MonadError[IO],
         ep: AnyEndpoint
     ) =
         m.suspend(counter.dec(asOpenTelemetryAttributes(ep, req)*))
 
-    private def increaseCounter[F[_]](
+    private def increaseCounter(
         req: ServerRequest,
-        counter: UpDownCounter[F, Long],
-        m: MonadError[F],
+        counter: UpDownCounter[IO, Long],
+        m: MonadError[IO],
         ep: AnyEndpoint
     ) =
         m.suspend(counter.inc(asOpenTelemetryAttributes(ep, req)*))
 
-    private def requestActive[F[_]: Applicative](
-        meter: Meter[F]
-    ): F[Metric[F, UpDownCounter[F, Long]]] =
+    private def requestActive(
+        meter: Meter[IO]
+    ): IO[Metric[IO, UpDownCounter[IO, Long]]] =
         meter
             .upDownCounter[Long]("http.server.active_requests")
             .withDescription("Active HTTP requests")
             .withUnit("{request}")
             .create
             .map: counter =>
-                Metric[F, UpDownCounter[F, Long]](
+                Metric[IO, UpDownCounter[IO, Long]](
                   counter,
                   onRequest = (req, counter, m) =>
                       m.unit:
@@ -124,14 +119,14 @@ object Metrics:
                                   decreaseCounter(req, counter, m, ep)
                 )
 
-    private def requestTotal[F[_]: Applicative](meter: Meter[F]): F[Metric[F, Counter[F, Long]]] =
+    private def requestTotal(meter: Meter[IO]): IO[Metric[IO, Counter[IO, Long]]] =
         meter
             .counter[Long]("http.server.request.total")
             .withDescription("Total HTTP requests")
             .withUnit("{request}")
             .create
             .map: counter =>
-                Metric[F, Counter[F, Long]](
+                Metric[IO, Counter[IO, Long]](
                   counter,
                   onRequest = (req, counter, m) =>
                       m.unit:
@@ -154,7 +149,7 @@ object Metrics:
                                       counter.inc(otLabels*)
                 )
 
-    private def requestDuration[F[_]: Applicative](meter: Meter[F]): F[Metric[F, Histogram[F, Long]]] =
+    private def requestDuration(meter: Meter[IO]): IO[Metric[IO, Histogram[IO, Long]]] =
         meter
             .histogram[Long]("http.server.request.duration")
             .withDescription("Duration of HTTP requests")
@@ -164,7 +159,7 @@ object Metrics:
             )
             .create
             .map: histogram =>
-                Metric[F, Histogram[F, Long]](
+                Metric[IO, Histogram[IO, Long]](
                   histogram,
                   onRequest = (req, recorder, m) =>
                       m.eval:
@@ -199,7 +194,7 @@ object Metrics:
                                       recorder.record(duration, otLabels*)
                 )
 
-    private def requestBodySize[F[_]: Applicative](meter: Meter[F]): F[Metric[F, Histogram[F, Long]]] =
+    private def requestBodySize(meter: Meter[IO]): IO[Metric[IO, Histogram[IO, Long]]] =
         meter
             .histogram[Long]("http.server.request.body.size")
             .withDescription(
@@ -208,7 +203,7 @@ object Metrics:
             .withUnit("By")
             .create
             .map: histogram =>
-                Metric[F, Histogram[F, Long]](
+                Metric[IO, Histogram[IO, Long]](
                   histogram,
                   onRequest = (req, recorder, m) =>
                       m.eval:
@@ -219,7 +214,7 @@ object Metrics:
                                       recorder.record(req.contentLength.getOrElse(0L), otLabels*)
                 )
 
-    private def responseBodySize[F[_]: Applicative](meter: Meter[F]): F[Metric[F, Histogram[F, Long]]] =
+    private def responseBodySize(meter: Meter[IO]): IO[Metric[IO, Histogram[IO, Long]]] =
         meter
             .histogram[Long]("http.server.response.body.size")
             .withDescription(
@@ -228,7 +223,7 @@ object Metrics:
             .withUnit("By")
             .create
             .map: histogram =>
-                Metric[F, Histogram[F, Long]](
+                Metric[IO, Histogram[IO, Long]](
                   histogram,
                   onRequest = (req, recorder, m) =>
                       m.eval:

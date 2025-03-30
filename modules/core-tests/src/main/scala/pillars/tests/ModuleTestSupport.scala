@@ -4,15 +4,12 @@
 
 package pillars.tests
 
-import cats.effect.Async
+import cats.effect.IO
 import cats.effect.Resource
-import cats.effect.std.Console
 import com.dimafeng.testcontainers.Container
-import fs2.io.net.Network
-import org.typelevel.otel4s.trace.Tracer
 import pillars.Module
 
 trait ModuleTestSupport:
     def key: Module.Key
-    def load[F[_]: Async: Network: Tracer: Console](container: Container): Option[Resource[F, Module[F[_]]]]
+    def load(container: Container): Option[Resource[IO, Module]]
 end ModuleTestSupport

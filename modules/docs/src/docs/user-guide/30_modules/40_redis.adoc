@@ -28,10 +28,10 @@ To use the `Redis` module, you need to import it and then access it through the 
 --
 import pillars.redis.*
 
-val redisModule = pillarsInstance.redis
+val redisModule = Pillars.redis
 --
 
-You can also use directly `Redis[F]`
+You can also use directly `Redis`
 You can then use the `redisModule` to perform Redis operations.
 
 === Redis Operations

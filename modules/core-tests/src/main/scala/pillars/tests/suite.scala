@@ -15,7 +15,6 @@ import com.dimafeng.testcontainers.munit.*
 import io.circe.Decoder
 import io.github.iltotore.iron.*
 import munit.CatsEffectSuite
-import org.typelevel.otel4s.trace.Tracer
 import pillars.AdminServer
 import pillars.ApiServer
 import pillars.App
@@ -31,7 +30,7 @@ import scribe.Scribe
 trait PillarsSuite extends CatsEffectSuite, TestContainersSuite:
     def moduleSupports: Set[ModuleTestSupport]
 
-    def withPillars[T](test: Pillars[IO] => IO[T]): IO[T] =
+    def withPillars[T](test: Pillars => IO[T]): IO[T] =
         withContainers: container =>
             extractContainers(container) match
                 case Left(error)       => fail(error)
@@ -40,7 +39,7 @@ trait PillarsSuite extends CatsEffectSuite, TestContainersSuite:
                         test(p)
 
     def fromContainer(supports: Set[ModuleTestSupport])(containers: List[? <: SingleContainer[?]])
-        : Resource[IO, Pillars[IO]] =
+        : Resource[IO, Pillars] =
         val conf = PillarsConfig(
           name = App.Name("Tests"),
           api = ApiServer.Config(enabled = false),
@@ -48,20 +47,19 @@ trait PillarsSuite extends CatsEffectSuite, TestContainersSuite:
           observability = Observability.Config()
         )
         for
-            obs     <- Observability.noop[IO].toResource
+            obs     <- Observability.noop.toResource
             modules <-
-                given Tracer[IO] = obs.tracer
                 (for
                     container <- containers
                     support   <- supports
-                    modules   <- support.load[IO](container)
+                    modules   <- support.load(container)
                     pair       = modules.map(support.key -> _)
                 yield pair).sequence.map(mods => Modules(mods.toMap))
         yield new Pillars:
             override def appInfo: AppInfo                                = BuildInfo.toAppInfo
-            override def observability: Observability[IO]                = obs
+            override def observability: Observability                    = obs
             override def config: PillarsConfig                           = conf
-            override def apiServer: ApiServer[IO]                        = ApiServer.noop[IO]
+            override def apiServer: ApiServer                            = ApiServer.noop
             override def logger: Scribe[IO]                              = scribe.cats.io
             override def readConfig[T](using decoder: Decoder[T]): IO[T] =
                 IO.raiseError(new NotImplementedError("readConfig is not available in tests"))

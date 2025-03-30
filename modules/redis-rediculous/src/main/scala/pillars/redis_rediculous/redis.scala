@@ -5,7 +5,6 @@
 package pillars.redis_rediculous
 
 import cats.effect.*
-import cats.effect.std.Console
 import cats.implicits.*
 import com.comcast.ip4s.*
 import fs2.io.file.Files
@@ -20,7 +19,6 @@ import io.circe.derivation.Configuration
 import io.github.iltotore.iron.*
 import io.github.iltotore.iron.circe.given
 import io.github.iltotore.iron.constraint.all.*
-import org.typelevel.otel4s.trace.Tracer
 import pillars.Module
 import pillars.Modules
 import pillars.ModuleSupport
@@ -28,20 +26,18 @@ import pillars.Pillars
 import pillars.codec.given
 import pillars.probes.*
 
-extension [F[_]](p: Pillars[F])
-    def redis: Redis[F] = p.module[Redis[F]](Redis.Key)
+extension (p: Pillars)
+    def redis: Redis = p.module[Redis](Redis.Key)
 
-final case class Redis[F[_]: MonadCancelThrow](config: RedisConfig, connection: Resource[F, RedisConnection[F]])(using
-    c: Concurrent[F]
-) extends Module[F]:
+final case class Redis(config: RedisConfig, connection: Resource[IO, RedisConnection[IO]]) extends Module:
     override type ModuleConfig = RedisConfig
     export connection.*
 
-    override def probes: List[Probe[F]] =
-        val probe = new Probe[F]:
+    override def probes: List[Probe] =
+        val probe = new Probe:
             override def component: Component = Component(Component.Name("redis"), Component.Type.Datastore)
-            override def check: F[Boolean]    = connection.use: client =>
-                RedisCommands.ping[io.chrisdavenport.rediculous.Redis[F, *]].run(client).map:
+            override def check: IO[Boolean]   = connection.use: client =>
+                RedisCommands.ping[io.chrisdavenport.rediculous.Redis[IO, *]].run(client).map:
                     case Ok | Pong => true
                     case _         => false
         probe.pure[List]
@@ -51,17 +47,14 @@ end Redis
 object Redis extends ModuleSupport:
     case object Key extends Module.Key:
         override val name: String = "redis-rediculous"
-    def apply[F[_]](using p: Pillars[F]): Redis[F] = p.module[Redis[F]](Redis.Key)
+    def apply(using p: Pillars): Redis = p.module[Redis](Redis.Key)
 
-    override type M[F[_]] = Redis[F]
+    override type M = Redis
     override val key: Module.Key = Redis.Key
 
-    def load[F[_]: Async: Network: Tracer: Console](
-        context: ModuleSupport.Context[F],
-        modules: Modules[F]
-    ): Resource[F, Redis[F]] =
+    def load(context: ModuleSupport.Context, modules: Modules): Resource[IO, Redis] =
         import context.*
-        given Files[F] = Files.forAsync[F]
+        given Files[IO] = Files.forIO
         for
             _         <- Resource.eval(logger.info("Loading Redis module"))
             config    <- Resource.eval(reader.read[RedisConfig]("redis"))
@@ -70,12 +63,12 @@ object Redis extends ModuleSupport:
         yield connection
         end for
     end load
-    def load[F[_]: Async: Network: Tracer: Console](config: RedisConfig): Resource[F, Redis[F]] =
-        create(config).pure[Resource[F, *]]
+    def load(config: RedisConfig): Resource[IO, Redis]                              =
+        create(config).pure[Resource[IO, *]]
     end load
 
-    private def create[F[_]: Async: Network: Tracer: Console](config: RedisConfig) =
-        val builder = RedisConnection.queued[F]
+    private def create(config: RedisConfig) =
+        val builder = RedisConnection.queued[IO]
             .withHost(config.host)
             .withPort(config.port)
             .withMaxQueued(config.maxQueue)

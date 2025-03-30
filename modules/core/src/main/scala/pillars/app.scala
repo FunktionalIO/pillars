@@ -4,16 +4,11 @@
 
 package pillars
 
-import cats.Parallel
 import cats.effect.{IOApp as CEIOApp, *}
 import cats.effect.std.Console
-import cats.effect.std.Env
-import cats.effect.std.SystemProperties
-import cats.syntax.all.*
 import com.monovore.decline.Command
 import com.monovore.decline.Opts
 import fs2.io.file.Path
-import fs2.io.net.Network
 import io.github.iltotore.iron.*
 import io.github.iltotore.iron.constraint.all.*
 import pillars.App.Description
@@ -21,27 +16,27 @@ import pillars.App.Name
 import pillars.App.Version
 import pillars.probes.Probe
 
-abstract class App[F[_]: LiftIO: Async: Console: Network: Parallel: Env: SystemProperties](val modules: ModuleSupport*):
+abstract class App(val modules: ModuleSupport*):
     def infos: AppInfo
-    def probes: List[Probe[F]]                = Nil
-    def adminControllers: List[Controller[F]] = Nil
-    def run: Run[F, F[Unit]]
+    def probes: List[Probe]                = Nil
+    def adminControllers: List[Controller] = Nil
+    def run: Run[IO[Unit]]
 
     import pillars.given
-    def run(args: List[String]): F[ExitCode] =
+    def run(args: List[String]): IO[ExitCode] =
         val command = Command(infos.name, infos.description):
             Opts.option[Path]("config", "Path to the configuration file").map: configPath =>
                 Pillars(infos, modules, configPath).use: pillars =>
-                    given Pillars[F] = pillars
+                    given Pillars = pillars
                     run.as(ExitCode.Success)
 
         command.parse(args, sys.env) match
-            case Left(help)  => Console[F].errorln(help).as(ExitCode.Error)
+            case Left(help)  => Console[IO].errorln(help).as(ExitCode.Error)
             case Right(prog) => prog
     end run
 end App
 
-abstract class IOApp(override val modules: ModuleSupport*) extends App[IO](modules*), CEIOApp
+abstract class IOApp(override val modules: ModuleSupport*) extends App(modules*), CEIOApp
 
 object App:
     private type NameConstraint = Not[Blank]

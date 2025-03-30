@@ -83,7 +83,7 @@ For Skunk:
 import pillars.db.*
 import skunk.*
 
-def foo[F[_]](using Pillars[F]) =
+def foo(using Pillars[F]) =
     sessions.use: session =>
         session.unique(sql"SELECT 1".query[Int])
 --
@@ -94,7 +94,7 @@ For Doobie:
 import pillars.db_doobie.*
 import doobie.*
 
-def foo[F[_]](using Pillars[F]) =
+def foo(using Pillars) =
     sql"SELECT 1".query[Int].unique.transact(db.transactor)
 --
 
@@ -104,7 +104,7 @@ The `DB` module provides a xref:../20_features/30_probes.adoc[probe] for health 
 
 [source,scala,linenums,role="data-noescape"]
 --
-val isHealthy: F[Boolean] = dbModule.probes.head.check
+val isHealthy: IO[Boolean] = dbModule.probes.head.check
 --
 
 This will return a boolean indicating whether the database is healthy or not.

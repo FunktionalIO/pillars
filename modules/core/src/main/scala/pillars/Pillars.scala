@@ -4,14 +4,9 @@
 
 package pillars
 
-import cats.Parallel
 import cats.effect.*
-import cats.effect.std.Console
-import cats.effect.std.Env
-import cats.effect.std.SystemProperties
 import cats.syntax.all.*
 import fs2.io.file.Path
-import fs2.io.net.Network
 import io.circe.Decoder
 import org.typelevel.otel4s.trace.Tracer
 import pillars.Config.PillarsConfig
@@ -24,7 +19,8 @@ import scribe.*
 /**
  * The Pillars trait defines the main components of the application.
  */
-trait Pillars[F[_]]:
+trait Pillars:
+
     /**
      * The application information.
      */
@@ -33,7 +29,7 @@ trait Pillars[F[_]]:
     /**
      * Component for observability. It allows you to create spans and metrics.
      */
-    def observability: Observability[F]
+    def observability: Observability
 
     /**
      * The configuration for the application.
@@ -45,19 +41,19 @@ trait Pillars[F[_]]:
      *
      * It has to be manually started by calling the `start` method in the application.
      */
-    def apiServer: ApiServer[F]
+    def apiServer: ApiServer
 
     /**
      * The logger for the application.
      */
-    def logger: Scribe[F]
+    def logger: Scribe[IO]
 
     /**
      * Reads a configuration from the configuration.
      *
      * @return the configuration.
      */
-    def readConfig[T](using Decoder[T]): F[T]
+    def readConfig[T](using Decoder[T]): IO[T]
 
     /**
      * Gets a module from the application.
@@ -79,40 +75,40 @@ object Pillars:
      * @param path The path to the configuration file.
      * @return a resource that will create a new instance of Pillars.
      */
-    def apply[F[_]: LiftIO: Async: Console: Network: Parallel: Env: SystemProperties](
+    def apply(
         infos: AppInfo,
         modules: Seq[ModuleSupport],
         path: Path
-    ): Resource[F, Pillars[F]] =
-        val configReader = Reader[F](path)
+    ): Resource[IO, Pillars] =
+        val configReader = Reader(path)
         for
-            _config        <- Resource.eval(configReader.read[PillarsConfig])
-            obs            <- Observability.init[F](infos, _config.observability)
-            given Tracer[F] = obs.tracer
-            _              <- Resource.eval(Logging.init(_config.log))
-            _logger         = ScribeImpl[F](Sync[F])
-            context         = ModuleSupport.Context(obs, configReader, _logger)
-            _              <- Resource.eval(_logger.info("Loading modules..."))
-            _modules       <- loadModules(modules, context)
-            _              <- Resource.eval(_logger.debug(s"Loaded ${_modules.size} modules"))
-            probes         <- ProbeManager.build[F](_modules, obs)
-            _              <- Spawn[F].background(probes.start())
-            _              <- Spawn[F].background:
-                                  AdminServer[F](_config.admin, infos, obs, _modules.adminControllers :+ probesController(probes))
-                                      .start()
-        yield new Pillars[F]:
-            override def appInfo: AppInfo                      = infos
-            override def observability: Observability[F]       = obs
-            override def config: PillarsConfig                 = _config
-            override def apiServer: ApiServer[F]               =
+            _config         <- Resource.eval(configReader.read[PillarsConfig])
+            obs             <- Observability.init(infos, _config.observability)
+            given Tracer[IO] = obs.tracer
+            _               <- Resource.eval(Logging.init(_config.log))
+            _logger          = scribe.cats.io
+            context          = ModuleSupport.Context(obs, configReader, _logger)
+            _               <- Resource.eval(_logger.info("Loading modules..."))
+            _modules        <- loadModules(modules, context)
+            _               <- Resource.eval(_logger.debug(s"Loaded ${_modules.size} modules"))
+            probes          <- ProbeManager.build(_modules, obs)
+            _               <- Spawn[IO].background(probes.start())
+            _               <- Spawn[IO].background:
+                                   AdminServer(_config.admin, infos, obs, _modules.adminControllers :+ probesController(probes))
+                                       .start()
+        yield new Pillars:
+            override def appInfo: AppInfo                       = infos
+            override def observability: Observability           = obs
+            override def config: PillarsConfig                  = _config
+            override def apiServer: ApiServer                   =
                 ApiServer.init(config.api, infos, observability, logger)
-            override def logger: Scribe[F]                     = _logger
-            override def readConfig[T](using Decoder[T]): F[T] = configReader.read[T]
-            override def module[T](key: Module.Key): T         = _modules.get(key)
+            override def logger: Scribe[IO]                     = _logger
+            override def readConfig[T](using Decoder[T]): IO[T] = configReader.read[T]
+            override def module[T](key: Module.Key): T          = _modules.get(key)
         end for
     end apply
 
-    inline def apply[F[_]](using p: Pillars[F]): Pillars[F] = p
+    inline def apply(using p: Pillars): Pillars = p
 
     /**
      * Loads the modules for the application.
@@ -120,15 +116,15 @@ object Pillars:
      * @param context The context for loading the modules.
      * @return a resource that will instantiate the modules.
      */
-    private def loadModules[F[_]: Async: Network: Tracer: Console](
+    private def loadModules(
         modules: Seq[ModuleSupport],
-        context: ModuleSupport.Context[F]
-    ): Resource[F, Modules[F]] =
+        context: ModuleSupport.Context
+    ): Resource[IO, Modules] =
         scribe.info(s"Found ${modules.size} modules: ${modules.map(_.key).map(_.name).mkString(", ")}")
         modules.topologicalSort(_.dependsOn) match
             case Left(value)  => throw value
             case Right(value) =>
-                value.foldLeftM(Modules.empty[F]):
+                value.foldLeftM(Modules.empty):
                     case (acc, loader) =>
                         loader.load(context, acc).map(acc.add(loader.key))
         end match

@@ -4,7 +4,7 @@
 
 package pillars
 
-import cats.effect.Async
+import cats.effect.IO
 import cats.syntax.all.*
 import org.typelevel.otel4s.trace.Span
 import org.typelevel.otel4s.trace.SpanKind
@@ -12,28 +12,26 @@ import org.typelevel.otel4s.trace.Tracer
 import sttp.monad.MonadError
 import sttp.tapir.Endpoint
 import sttp.tapir.model.ServerRequest
-import sttp.tapir.server.interceptor.DecodeFailureContext
-import sttp.tapir.server.interceptor.DecodeSuccessContext
-import sttp.tapir.server.interceptor.EndpointHandler
-import sttp.tapir.server.interceptor.EndpointInterceptor
-import sttp.tapir.server.interceptor.Responder
-import sttp.tapir.server.interceptor.SecurityFailureContext
+import sttp.tapir.server.interceptor.*
 import sttp.tapir.server.interpreter.BodyListener
 import sttp.tapir.server.model.ServerResponse
 
-final case class Traces[F[_]: Async](tracer: Tracer[F]) extends EndpointInterceptor[F]:
-    override def apply[B](responder: Responder[F, B], endpointHandler: EndpointHandler[F, B]): EndpointHandler[F, B] =
-        new EndpointHandler[F, B]:
+final case class Traces(tracer: Tracer[IO]) extends EndpointInterceptor[IO]:
+    override def apply[B](
+        responder: Responder[IO, B],
+        endpointHandler: EndpointHandler[IO, B]
+    ): EndpointHandler[IO, B] =
+        new EndpointHandler[IO, B]:
             override def onDecodeSuccess[A, U, I](
-                ctx: DecodeSuccessContext[F, A, U, I]
-            )(using monad: MonadError[F], bodyListener: BodyListener[F, B]): F[ServerResponse[B]] =
+                ctx: DecodeSuccessContext[IO, A, U, I]
+            )(using monad: MonadError[IO], bodyListener: BodyListener[IO, B]): IO[ServerResponse[B]] =
                 trace(ctx.endpoint, ctx.request, endpointHandler.onDecodeSuccess(ctx))
             end onDecodeSuccess
 
             override def onDecodeFailure(ctx: DecodeFailureContext)(using
-                monad: MonadError[F],
-                bodyListener: BodyListener[F, B]
-            ): F[Option[ServerResponse[B]]] =
+                monad: MonadError[IO],
+                bodyListener: BodyListener[IO, B]
+            ): IO[Option[ServerResponse[B]]] =
                 tracer.joinOrRoot(ctx.request.headers.map(h => h.name -> h.value).toMap):
                     tracer
                         .spanBuilder(spanName(ctx.endpoint))
@@ -51,17 +49,17 @@ final case class Traces[F[_]: Async](tracer: Tracer[F]) extends EndpointIntercep
                                 _        <- span.addEvent("Request received")
                             yield response
 
-            override def onSecurityFailure[A](ctx: SecurityFailureContext[F, A])(using
-                monad: MonadError[F],
-                bodyListener: BodyListener[F, B]
-            ): F[ServerResponse[B]] =
+            override def onSecurityFailure[A](ctx: SecurityFailureContext[IO, A])(using
+                monad: MonadError[IO],
+                bodyListener: BodyListener[IO, B]
+            ): IO[ServerResponse[B]] =
                 trace(ctx.endpoint, ctx.request, endpointHandler.onSecurityFailure(ctx))
 
             private def trace[O, I, U, A](
                 endpoint: Endpoint[A, I, ?, ?, ?],
                 request: ServerRequest,
-                execution: F[ServerResponse[O]]
-            ): F[ServerResponse[O]] =
+                execution: IO[ServerResponse[O]]
+            ): IO[ServerResponse[O]] =
                 tracer.joinOrRoot(request.headers.map(h => h.name -> h.value).toMap):
                     tracer
                         .spanBuilder(spanName(endpoint))
@@ -80,9 +78,10 @@ final case class Traces[F[_]: Async](tracer: Tracer[F]) extends EndpointIntercep
             private def spanName(endpoint: Endpoint[?, ?, ?, ?, ?]): String =
                 s"${endpoint.method.map(_.method).getOrElse("*")} ${endpoint.showPathTemplate(showQueryParam = None)}"
 
-            private def handle[T](span: Span[F], execution: F[T]): F[T] =
-                execution.onError: error =>
-                    span.addEvent("Error") *>
-                        span.addAttributes(Observability.Attributes.fromError(error))
+            private def handle[T](span: Span[IO], execution: IO[T]): IO[T] =
+                execution.onError:
+                    case error: Throwable =>
+                        span.addEvent("Error") *>
+                            span.addAttributes(Observability.Attributes.fromError(error))
 
 end Traces

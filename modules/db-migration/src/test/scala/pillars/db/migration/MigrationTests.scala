@@ -8,7 +8,6 @@ import cats.effect.IO
 import com.dimafeng.testcontainers.PostgreSQLContainer
 import io.github.iltotore.iron.*
 import org.testcontainers.utility.DockerImageName
-import org.typelevel.otel4s.trace.Tracer
 import pillars.Config.Secret
 import pillars.Pillars
 import pillars.db.DatabaseConfig
@@ -42,10 +41,9 @@ class MigrationTests extends PillarsFromContainerForEach:
 
     test("migration should run the scripts"):
         withPillars: p =>
-            given Pillars[IO]           = p
-            given Tracer[IO]            = p.observability.tracer
-            val config: MigrationConfig = configFor(p.module[pillars.db.DB[IO]](DB.key).config)
-            val migration               = DBMigration[IO](config)
+            given Pillars               = p
+            val config: MigrationConfig = configFor(p.module[pillars.db.DB](DB.key).config)
+            val migration               = DBMigration(config)
             val result                  =
                 for
                     _   <- migration.migrate("db/migrations")
@@ -56,10 +54,9 @@ class MigrationTests extends PillarsFromContainerForEach:
 
     test("migration should write in the history table"):
         withPillars: p =>
-            given Pillars[IO]           = p
-            given Tracer[IO]            = p.observability.tracer
-            val config: MigrationConfig = configFor(p.module[pillars.db.DB[IO]](DB.key).config)
-            val migration               = DBMigration[IO](config)
+            given Pillars               = p
+            val config: MigrationConfig = configFor(p.module[pillars.db.DB](DB.key).config)
+            val migration               = DBMigration(config)
             val result                  =
                 for
                     _   <- migration.migrate("db/migrations", DatabaseSchema.public, DatabaseTable("schema_history"))
@@ -70,10 +67,9 @@ class MigrationTests extends PillarsFromContainerForEach:
 
     test("running twice migrations should be the same as running once"):
         withPillars: p =>
-            given Pillars[IO]           = p
-            given Tracer[IO]            = p.observability.tracer
-            val config: MigrationConfig = configFor(p.module[pillars.db.DB[IO]](DB.key).config)
-            val migration               = DBMigration[IO](config)
+            given Pillars               = p
+            val config: MigrationConfig = configFor(p.module[pillars.db.DB](DB.key).config)
+            val migration               = DBMigration(config)
             val result                  =
                 for
                     _   <- migration.migrate("db/migrations")

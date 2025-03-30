@@ -4,6 +4,7 @@
 
 package pillars
 
+import cats.effect.IO
 import io.circe.Codec
 import io.circe.Decoder
 import io.circe.Encoder
@@ -31,11 +32,11 @@ package object flags:
     given Codec[FeatureFlag] = Codec.AsObject.derived
 
     given Schema[FeatureFlag] = Schema.derived
-    extension [F[_]](p: Pillars[F])
-        def flags: FeatureFlags[F] = p.module(FeatureFlags.Key)
+    extension (p: Pillars)
+        def flags: FeatureFlags = p.module(FeatureFlags.Key)
 
-        def whenEnabled[A](flag: Flag)(thunk: => F[A]): F[Unit] =
-            p.module[FeatureFlags[F]](FeatureFlags.Key).when(flag)(thunk)
+        def whenEnabled[A](flag: Flag)(thunk: => IO[A]): IO[Unit] =
+            p.module[FeatureFlags](FeatureFlags.Key).when(flag)(thunk)
     end extension
 
     extension (inline ctx: StringContext)
@@ -47,6 +48,6 @@ package object flags:
             else Left(Flag.rtc.message)
 
     extension (flag: Flag)
-        def whenEnabled[F[_], A](using p: Pillars[F])(thunk: => F[A]): F[Unit] =
-            p.module[FeatureFlags[F]](FeatureFlags.Key).when(flag)(thunk)
+        def whenEnabled[A](using p: Pillars)(thunk: => IO[A]): IO[Unit] =
+            p.module[FeatureFlags](FeatureFlags.Key).when(flag)(thunk)
 end flags

@@ -4,13 +4,10 @@
 
 package pillars.db_doobie.tests
 
-import cats.effect.Async
+import cats.effect.IO
 import cats.effect.Resource
-import cats.effect.std.Console
 import com.dimafeng.testcontainers.JdbcDatabaseContainer
-import fs2.io.net.Network
 import io.github.iltotore.iron.*
-import org.typelevel.otel4s.trace.Tracer
 import pillars.Config.Secret
 import pillars.Module
 import pillars.Modules
@@ -19,14 +16,12 @@ import pillars.db_doobie.*
 import pillars.probes.ProbeConfig
 
 case class DB(container: JdbcDatabaseContainer) extends ModuleSupport:
-    override type M[F[_]] = pillars.db_doobie.DB[F]
+    override type M = pillars.db_doobie.DB
 
     override def key: Module.Key = pillars.db_doobie.DB.key
 
-    override def load[F[_]: Async: Network: Tracer: Console](
-        context: ModuleSupport.Context[F],
-        modules: Modules[F]
-    ): Resource[F, pillars.db_doobie.DB[F]] = pillars.db_doobie.DB.load[F](dbConfig)
+    override def load(context: ModuleSupport.Context, modules: Modules): Resource[IO, pillars.db_doobie.DB] =
+        pillars.db_doobie.DB.load(dbConfig)
 
     private def dbConfig: DatabaseConfig =
         DatabaseConfig(

@@ -4,7 +4,6 @@
 
 package pillars
 
-import cats.Applicative
 import cats.Monoid
 import cats.effect.*
 import cats.effect.std.MapRef
@@ -41,30 +40,30 @@ object probes:
     end Component
 
     // tag::probe[]
-    trait Probe[F[_]]:
+    trait Probe:
         def component: Component //// <1>
-        def check: F[Boolean] //// <2>
+        def check: IO[Boolean] //// <2>
         def config: ProbeConfig = ProbeConfig() //// <3>
     end Probe
     // end::probe[]
 
-    trait ProbeManager[F[_]]:
-        def status: F[Map[Component, Status]]
-        def globalStatus: F[Status]
-        def start(): F[Unit]
+    trait ProbeManager:
+        def status: IO[Map[Component, Status]]
+        def globalStatus: IO[Status]
+        def start(): IO[Unit]
     end ProbeManager
 
     object ProbeManager:
-        def build[F[_]: Async](modules: Modules[F], observability: Observability[F]): Resource[F, ProbeManager[F]] =
+        def build(modules: Modules, observability: Observability): Resource[IO, ProbeManager] =
             import observability.*
             Resource.eval:
                 val probes = modules.all.flatMap(_.probes).toList
                 val limits = probes.map(c => c.component -> c.config.failureCount).toMap
-                MapRef.ofConcurrentHashMap[F, Component, Int]().map: componentErrors =>
-                    val streams: List[Stream[F, Unit]] =
+                MapRef.ofConcurrentHashMap[IO, Component, Int]().map: componentErrors =>
+                    val streams: List[Stream[IO, Unit]] =
                         probes.map: probe =>
                             Stream
-                                .fixedRate(probe.config.interval)
+                                .fixedRate[IO](probe.config.interval)
                                 .evalMap: _ =>
                                     def incrementErrorCount =
                                         componentErrors(probe.component).update:
@@ -80,10 +79,10 @@ object probes:
                                                     observability.recordException(e) *> incrementErrorCount
                                                 case _                     => incrementErrorCount
                                             .void
-                    new ProbeManager[F]:
-                        def start(): F[Unit] = Stream(streams*).parJoinUnbounded.compile.drain
+                    new ProbeManager:
+                        def start(): IO[Unit] = Stream(streams*).parJoinUnbounded.compile.drain
 
-                        def status: F[Map[Component, Status]] =
+                        def status: IO[Map[Component, Status]] =
                             limits.toList
                                 .traverse: (component, limit) =>
                                     componentErrors(component).get.map:
@@ -94,7 +93,7 @@ object probes:
                                         case None        => component -> Status.pass
                                 .map(_.toMap)
 
-                        def globalStatus: F[Status] =
+                        def globalStatus: IO[Status] =
                             status.map(_.values.toList.foldLeft(Status.pass)(_ |+| _))
                     end new
         end build
@@ -148,8 +147,8 @@ object probes:
         given Codec[ProbeConfig] = Codec.AsObject.derivedConfigured
     end ProbeConfig
 
-    def probesController[F[_]: Applicative](manager: ProbeManager[F]): Controller[F] =
-        val alive = liveness.serverLogicSuccess(_ => "OK".pure[F])
+    def probesController(manager: ProbeManager): Controller =
+        val alive = liveness.serverLogicSuccess(_ => "OK".pure[IO])
         val ready = readiness.serverLogicSuccess: _ =>
             manager.status.map: statuses =>
                 val checks       = statuses.map: (component, status) =>

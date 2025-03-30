@@ -4,10 +4,11 @@
 
 package pillars
 
+import cats.effect.IO
 import sttp.capabilities.fs2.Fs2Streams
 import sttp.tapir.server.ServerEndpoint
 
-type Controller[F[_]] = List[Controller.HttpEndpoint[F]]
+type Controller = List[Controller.HttpEndpoint]
 
 object Controller:
-    type HttpEndpoint[F[_]] = ServerEndpoint[Fs2Streams[F], F]
+    type HttpEndpoint = ServerEndpoint[Fs2Streams[IO], IO]

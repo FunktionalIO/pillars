@@ -5,9 +5,8 @@
 package pillars
 
 import cats.Show
-import cats.effect.Async
+import cats.effect.IO
 import cats.effect.Resource
-import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.io.file.Files
 import fs2.io.file.Path
@@ -26,7 +25,7 @@ import pillars.PillarsError.Message
 import scala.util.matching.Regex
 import scodec.bits.ByteVector
 
-def config[F[_]](using p: Pillars[F]): Config.PillarsConfig = p.config
+def config(using p: Pillars): Config.PillarsConfig = p.config
 
 trait Config
 
@@ -45,31 +44,31 @@ object Config:
         given Encoder[PillarsConfig] = Encoder.AsObject.derivedConfigured
     end PillarsConfig
 
-    case class Reader[F[_]](path: Path):
+    case class Reader(path: Path):
         private def matcher(regMatch: Regex.Match): String = sys.env
             .getOrElse(regMatch.group(1), throw ConfigError.MissingEnvironmentVariable(regMatch.group(1)))
 
         private val regex: Regex = """\$\{([^}]+)}""".r
 
-        private def readConfig[T: Decoder](using Async[F], Files[F]): Resource[F, Either[ParsingFailure, Json]] =
-            Resource.eval(Files[F].readUtf8(path)
+        private def readConfig[T: Decoder](using Files[IO]): Resource[IO, Either[ParsingFailure, Json]] =
+            Resource.eval(Files[IO].readUtf8(path)
                 .map(regex.replaceAllIn(_, matcher))
                 .map: input =>
                     Parser.default.parse(input)
                 .compile
                 .onlyOrError)
 
-        def read[T: Decoder](using Async[F], Files[F]): F[T] =
+        def read[T: Decoder](using Files[IO]): IO[T] =
             readConfig[T].use: json =>
-                Sync[F].fromEither:
+                IO.fromEither:
                     json
                         .leftMap(ConfigError.ParsingError.apply)
                         .flatMap(_.as[T])
         end read
 
-        def read[T: Decoder](key: String)(using Async[F], Files[F]): F[T] =
+        def read[T: Decoder](key: String)(using Files[IO]): IO[T] =
             readConfig[T].use: parsed =>
-                Sync[F].fromEither:
+                IO.fromEither:
                     parsed match
                         case Left(failure) => Left(ConfigError.ParsingError(failure))
                         case Right(json)   => json.hcursor.downField(key).as[T].leftMap(ConfigError.ParsingError.apply)

@@ -31,7 +31,7 @@ class RabbitMQTests extends CatsEffectSuite, TestContainerForEach:
       bindings = Seq(RabbitMQContainer.Binding(exchange.value, queue.value, routingKey.value))
     )
 
-    given Pillars[IO] = new Pillars[IO]:
+    given Pillars = new Pillars:
         def appInfo                         = ???
         def observability                   = ???
         def config                          = ???
@@ -50,7 +50,7 @@ class RabbitMQTests extends CatsEffectSuite, TestContainerForEach:
     test("allow exchanging messages"):
         withContainers { container =>
             for
-                client <- RabbitMQ[IO](configFor(container)).map(_.client)
+                client <- RabbitMQ(configFor(container)).map(_.client)
                 _      <- client.createConnectionChannel.evalMap { implicit channel =>
                               for
                                   publisher  <- client.createPublisher[String](exchange, routingKey)

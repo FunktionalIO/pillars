@@ -4,7 +4,7 @@
 
 package pillars
 
-import cats.effect.Async
+import cats.effect.IO
 import cats.effect.Resource.ExitCase
 import cats.syntax.all.*
 import com.comcast.ip4s.*
@@ -17,31 +17,31 @@ import scala.annotation.targetName
 import scribe.Scribe
 import sttp.model.StatusCode
 
-trait ApiServer[F[_]]:
+trait ApiServer:
 
-    def start(endpoints: List[HttpEndpoint[F]]): F[Unit]
+    def start(endpoints: List[HttpEndpoint]): IO[Unit]
 
     @targetName("startWithEndpoints")
-    def start(endpoints: HttpEndpoint[F]*): F[Unit] =
+    def start(endpoints: HttpEndpoint*): IO[Unit] =
         start(endpoints.toList)
 
     @targetName("startWithControllers")
-    def start(controllers: Controller[F]*): F[Unit] =
+    def start(controllers: Controller*): IO[Unit] =
         start(controllers.toList.flatten)
 
 end ApiServer
 
-def server[F[_]](using p: Pillars[F]): Run[F, ApiServer[F]] = p.apiServer
+def server(using p: Pillars): Run[ApiServer] = p.apiServer
 
 object ApiServer:
-    def init[F[_]: Async](
+    def init(
         config: Config,
         infos: AppInfo,
-        observability: Observability[F],
-        logger: Scribe[F]
-    ): ApiServer[F] =
-        (endpoints: List[HttpEndpoint[F]]) =>
-            Async[F].whenA(config.enabled):
+        observability: Observability,
+        logger: Scribe[IO]
+    ): ApiServer =
+        (endpoints: List[HttpEndpoint]) =>
+            IO.whenA(config.enabled):
                 for
                     _ <- logger.info(s"Starting API server on ${config.http.host}:${config.http.port}")
                     _ <- HttpServer
@@ -71,5 +71,5 @@ object ApiServer:
       logging = Logging.HttpConfig()
     )
 
-    def noop[F[_]: Async]: ApiServer[F] = _ => Async[F].unit
+    def noop: ApiServer = _ => IO.unit
 end ApiServer

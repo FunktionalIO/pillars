@@ -4,15 +4,13 @@
 
 package pillars.db.tests
 
-import cats.effect.Async
+import cats.effect.IO
 import cats.effect.Resource
-import cats.effect.std.Console
 import cats.syntax.all.*
 import com.comcast.ip4s.Host
 import com.comcast.ip4s.Port
 import com.dimafeng.testcontainers.Container
 import com.dimafeng.testcontainers.PostgreSQLContainer
-import fs2.io.net.Network
 import io.github.iltotore.iron.*
 import org.typelevel.otel4s.trace.Tracer
 import pillars.Config.Secret
@@ -27,10 +25,12 @@ import pillars.tests.ModuleTestSupport
 object DB extends ModuleTestSupport:
     override def key: Module.Key = DBModule.key
 
-    def load[F[_]: Async: Network: Tracer: Console](container: Container): Option[Resource[F, Module[F]]] =
+    def load(container: Container): Option[Resource[IO, Module]] =
+        given Tracer[IO] = Tracer.noop
         container match
             case c: PostgreSQLContainer => DBModule.load(configFor(c)).some
             case _                      => None
+    end load
 
     private def configFor(container: PostgreSQLContainer): DatabaseConfig =
         DatabaseConfig(

@@ -24,7 +24,8 @@ To log something in your code, you can use the `logger` defined in the `pillars`
 
 [source,scala]
 ----
-def run(using Pillars[IO]): IO[Unit] =
+import pillars.Pillars.logger
+def run(using Pillars): IO[Unit] =
     for
         _ <- logger.info(s"📚 Welcome to ${config.name}!")
         _ <- logger.debug(s"📚 The configuration is: $config")

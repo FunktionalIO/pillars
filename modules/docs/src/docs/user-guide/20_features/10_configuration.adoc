@@ -193,7 +193,7 @@ object app extends pillars.EntryPoint:
     def app: pillars.App[IO] = new pillars.App[IO]:
         def infos: AppInfo = BuildInfo.toAppInfo
 
-        def run(using p: Pillars[IO]): IO[Unit] =
+        def run(using p: Pillars): IO[Unit] =
             import p.*
             for
                 config <- configReader[BookstoreConfig]

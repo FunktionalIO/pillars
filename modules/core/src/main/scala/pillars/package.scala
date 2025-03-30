@@ -5,7 +5,6 @@
 package pillars
 
 import cats.data.Validated
-import cats.effect.IO
 import com.monovore.decline.Argument
 import fs2.io.file.Path
 
@@ -15,11 +14,8 @@ given Argument[Path] with
     def defaultMetavar = "path"
 
 /**
- * Type alias for a Pillars[F] context bound.
+ * Type alias for a Pillars context bound.
  *
- * @tparam F The effect type.
  * @tparam A The type of the value that is being computed.
  */
-type Run[F[_], A] = Pillars[F] ?=> A
-
-type RunIO[A] = Run[IO, A]
+type Run[A] = Pillars ?=> A

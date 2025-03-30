@@ -4,19 +4,15 @@
 
 package pillars.db.migrations
 
-import cats.effect.Async
+import cats.effect.IO
 import cats.effect.Resource
-import cats.effect.std.Console
-import cats.syntax.all.*
 import fs2.io.file.Files
-import fs2.io.net.Network
 import io.circe.Codec
 import io.circe.derivation.Configuration
 import io.github.iltotore.iron.*
 import io.github.iltotore.iron.circe.given
 import io.github.iltotore.iron.constraint.all.*
 import org.flywaydb.core.Flyway
-import org.typelevel.otel4s.trace.Tracer
 import pillars.Config.Secret
 import pillars.Module
 import pillars.Modules
@@ -25,9 +21,7 @@ import pillars.Pillars
 import pillars.Run
 import pillars.logger
 
-final case class DBMigration[F[_]: Async: Console: Tracer: Network: Files](
-    config: MigrationConfig
-) extends Module[F]:
+final case class DBMigration(config: MigrationConfig) extends Module:
     override type ModuleConfig = MigrationConfig
 
     private def flyway(schema: DatabaseSchema, table: DatabaseTable, location: String) = Flyway
@@ -48,9 +42,9 @@ final case class DBMigration[F[_]: Async: Console: Tracer: Network: Files](
         .table(table)
         .load()
 
-    inline def migrateModule(key: Module.Key): Run[F, F[Unit]] =
+    inline def migrateModule(key: Module.Key): Run[IO[Unit]] =
         for
-            _ <- Async[F].delay:
+            _ <- IO.delay:
                      flyway(
                        DatabaseSchema.pillars,
                        DatabaseTable(s"${key.name.replaceAll("[^0-9a-zA-Z$_]", "-")}_schema_history".assume),
@@ -62,30 +56,27 @@ final case class DBMigration[F[_]: Async: Console: Tracer: Network: Files](
         path: String,
         schema: DatabaseSchema = DatabaseSchema.public,
         schemaHistoryTable: DatabaseTable = DatabaseTable("flyway_schema_history")
-    ): Run[F, F[Unit]] =
+    ): Run[IO[Unit]] =
         for
-            _ <- Async[F].delay(flyway(schema, schemaHistoryTable, path).migrate())
+            _ <- IO.delay(flyway(schema, schemaHistoryTable, path).migrate())
             _ <- logger.info(s"Migration completed for $schema")
         yield ()
 
 end DBMigration
 
-def dbMigration[F[_]](using p: Pillars[F]): DBMigration[F] = p.module[DBMigration[F]](DBMigration.Key)
+def dbMigration(using p: Pillars): DBMigration = p.module[DBMigration](DBMigration.Key)
 
 object DBMigration extends ModuleSupport:
     case object Key extends Module.Key:
         override val name: String = "db-migration"
 
-    override type M[F[_]] = DBMigration[F]
+    override type M = DBMigration
     override val key: Module.Key = DBMigration.Key
 
     override def dependsOn: Set[ModuleSupport] = Set.empty
 
-    def load[F[_]: Async: Network: Tracer: Console](
-        context: ModuleSupport.Context[F],
-        modules: Modules[F]
-    ): Resource[F, DBMigration[F]] =
-        given Files[F] = Files.forAsync[F]
+    def load(context: ModuleSupport.Context, modules: Modules): Resource[IO, DBMigration] =
+        given Files[IO] = Files.forIO
         Resource.eval:
             for
                 _      <- context.logger.info("Loading DB Migration module")

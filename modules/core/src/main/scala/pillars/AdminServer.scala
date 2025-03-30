@@ -4,9 +4,8 @@
 
 package pillars
 
-import cats.effect.Async
+import cats.effect.IO
 import cats.effect.Resource.ExitCase
-import cats.effect.kernel.Async
 import cats.syntax.all.*
 import com.comcast.ip4s.*
 import io.circe.Codec
@@ -15,14 +14,14 @@ import pillars.AdminServer.Config
 import sttp.model.StatusCode
 import sttp.tapir.*
 
-final case class AdminServer[F[_]: Async](
+final case class AdminServer(
     config: Config,
     infos: AppInfo,
-    obs: Observability[F],
-    controllers: List[Controller[F]]
+    obs: Observability,
+    controllers: List[Controller]
 ):
-    def start(): F[Unit] =
-        val logger = scribe.cats.effect[F]
+    def start(): IO[Unit] =
+        val logger = scribe.cats.io
         import logger.*
         if config.enabled then
             for
@@ -41,7 +40,7 @@ final case class AdminServer[F[_]: Async](
                              case _                   => info("Admin server stopped")
                          .useForever
             yield ()
-        else Async[F].unit
+        else IO.unit
         end if
     end start
 end AdminServer

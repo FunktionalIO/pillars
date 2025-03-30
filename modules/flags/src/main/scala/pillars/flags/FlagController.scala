@@ -4,7 +4,6 @@
 
 package pillars.flags
 
-import cats.Functor
 import cats.syntax.all.*
 import io.github.iltotore.iron.*
 import pillars.AdminServer.baseEndpoint
@@ -20,7 +19,7 @@ import sttp.tapir.*
 import sttp.tapir.codec.iron.given
 import sttp.tapir.json.circe.jsonBody
 
-def flagController[F[_]: Functor](manager: FeatureFlags[F]): Controller[F] =
+def flagController(manager: FeatureFlags): Controller =
     val listAll = FlagEndpoints.list.serverLogicSuccess(_ => manager.flags)
     val getOne  =
         FlagEndpoints.get.serverLogic: name =>

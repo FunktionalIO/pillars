@@ -4,14 +4,11 @@
 
 package pillars.rabbitmq.fs2.tests
 
-import cats.effect.Async
+import cats.effect.IO
 import cats.effect.Resource
-import cats.effect.std.Console
 import com.comcast.ip4s.Host
 import com.comcast.ip4s.Port
 import com.dimafeng.testcontainers.RabbitMQContainer
-import fs2.io.net.Network
-import org.typelevel.otel4s.trace.Tracer
 import pillars.Module
 import pillars.Modules
 import pillars.ModuleSupport
@@ -19,14 +16,12 @@ import pillars.rabbitmq.fs2.RabbitMQ as RabbitMQModule
 import pillars.rabbitmq.fs2.RabbitMQConfig
 
 case class RabbitMQ(container: RabbitMQContainer) extends ModuleSupport:
-    override type M[F[_]] = RabbitMQModule[F[_]]
+    override type M = RabbitMQModule
 
     override def key: Module.Key = RabbitMQModule.Key
 
-    override def load[F[_]: Async: Network: Tracer: Console](
-        context: ModuleSupport.Context[F],
-        modules: Modules[F]
-    ): Resource[F, RabbitMQModule[F]] = RabbitMQModule(config)
+    override def load(context: ModuleSupport.Context, modules: Modules): Resource[IO, RabbitMQModule] =
+        RabbitMQModule(config)
 
     private val config = RabbitMQConfig(
       host = Host.fromString(container.host).get,

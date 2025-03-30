@@ -4,14 +4,8 @@
 
 package pillars
 
-import cats.Parallel
-import cats.effect.Async
-import cats.effect.LiftIO
+import cats.effect.IO
 import cats.effect.Resource
-import cats.effect.std.Console
-import cats.effect.std.Env
-import cats.effect.std.SystemProperties
-import cats.effect.syntax.all.*
 import cats.syntax.all.*
 import io.circe.Codec
 import io.circe.derivation.Configuration
@@ -37,12 +31,12 @@ import sttp.tapir.server.interceptor.EndpointInterceptor
 import sttp.tapir.server.interceptor.Interceptor
 import sttp.tapir.server.model.ServerResponse
 
-final case class Observability[F[_]: Async](tracer: Tracer[F], metrics: Meter[F], interceptor: Interceptor[F]):
+final case class Observability(tracer: Tracer[IO], metrics: Meter[IO], interceptor: Interceptor[IO]):
     export metrics.*
     export tracer.span
     export tracer.spanBuilder
 
-    def recordException(error: Throwable): F[Unit] =
+    def recordException(error: Throwable): IO[Unit] =
         for
             span <- tracer.currentSpanOrNoop
             _    <- span.recordException(error)
@@ -52,19 +46,19 @@ final case class Observability[F[_]: Async](tracer: Tracer[F], metrics: Meter[F]
 
 end Observability
 object Observability:
-    def apply[F[_]: Pillars]: Run[F, Observability[F]] = Pillars[F].observability
-    def noop[F[_]: LiftIO: Async]: F[Observability[F]] =
-        Observability(Tracer.noop[F], Meter.noop[F], EndpointInterceptor.noop[F]).pure[F]
+    def apply(using p: Pillars): Run[Observability] = p.observability
+    def noop: IO[Observability]                     =
+        Observability(Tracer.noop[IO], Meter.noop[IO], EndpointInterceptor.noop[IO]).pure[IO]
 
-    def init[F[_]: LiftIO: Async: Parallel: Console: Env: SystemProperties](
+    def init(
         appInfo: AppInfo,
         config: Config
-    ): Resource[F, Observability[F]] =
+    ): Resource[IO, Observability] =
         if config.isEnabled then
             for
-                otel4s       <- OpenTelemetrySdk.autoConfigured[F]: builder =>
+                otel4s       <- OpenTelemetrySdk.autoConfigured[IO]: builder =>
                                     builder
-                                        .addExportersConfigurer(OtlpExportersAutoConfigure[F])
+                                        .addExportersConfigurer(OtlpExportersAutoConfigure[IO])
                                         .addResourceCustomizer: (resource, otelConfig) =>
                                             val configured =
                                                 TelemetryResource(
@@ -77,11 +71,11 @@ object Observability:
                 sdk           = otel4s.sdk
                 tracer       <- (if config.traces.enabled then
                                      sdk.tracerProvider.get(config.traces.name.getOrElse(config.serviceName))
-                                 else Tracer.noop[F].pure[F]).toResource
+                                 else Tracer.noop[IO].pure[IO]).toResource
                 meter        <- (if config.metrics.enabled then
                                      sdk.meterProvider.get(config.metrics.name.getOrElse(config.serviceName))
-                                 else Meter.noop[F].pure[F]).toResource
-                tapirMetrics <- Metrics.init[F](meter).toResource
+                                 else Meter.noop[IO].pure[IO]).toResource
+                tapirMetrics <- Metrics.init(meter).toResource
             yield Observability(tracer, meter, tapirMetrics.metricsInterceptor())
         else
             noop.toResource
@@ -128,7 +122,7 @@ object Observability:
         def toAttribute(name: String): Attribute[Boolean] = Attribute(name, value)
 
     object Attributes:
-        def fromRequest[F[_]](request: Request[F]): OtelAttributes =
+        def fromRequest(request: Request[IO]): OtelAttributes =
             val scheme = request.uri.scheme.map(_.value).getOrElse("http")
             OtelAttributes
                 .newBuilder
@@ -148,7 +142,7 @@ object Observability:
                 .result()
         end fromRequest
 
-        def fromTapirRequest[F[_]](request: ServerRequest): OtelAttributes =
+        def fromTapirRequest(request: ServerRequest): OtelAttributes =
             OtelAttributes
                 .newBuilder
                 .addOne("http.request.method", request.method.method)
@@ -165,16 +159,16 @@ object Observability:
                 .addOne("user.agent", request.headers(`User-Agent`.name.toString))
                 .result()
 
-        def fromTapirEndpoint[F[_]](endpoint: Endpoint[?, ?, ?, ?, ?]): OtelAttributes =
+        def fromTapirEndpoint(endpoint: Endpoint[?, ?, ?, ?, ?]): OtelAttributes =
             OtelAttributes
                 .newBuilder
                 .addOne("http.route", endpoint.showPathTemplate(showQueryParam = None))
                 .result()
 
-        def fromTapirResponse[F[_]](response: ServerResponse[?]): OtelAttributes =
+        def fromTapirResponse(response: ServerResponse[?]): OtelAttributes =
             responseAttributes(response.code.code)
 
-        def fromResponse[F[_]](response: Response[F]): OtelAttributes =
+        def fromResponse(response: Response[IO]): OtelAttributes =
             responseAttributes(response.status.code)
 
         private def responseAttributes(status: Int) =
@@ -192,7 +186,7 @@ object Observability:
                 )
                 .result()
 
-        def fromError[F[_]](error: Throwable): OtelAttributes =
+        def fromError(error: Throwable): OtelAttributes =
             OtelAttributes
                 .newBuilder
                 .addOne[Boolean]("error", true)

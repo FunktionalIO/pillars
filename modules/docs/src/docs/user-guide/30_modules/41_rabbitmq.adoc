@@ -49,10 +49,10 @@ To use the `RabbitMQ` module, you need to import it and then access it through t
 --
 import pillars.redis.*
 
-val rabbitmqModule = pillarsInstance.redis
+val rabbitmqModule = pillars.redis
 --
 
-You can also use directly `RabbitMQ[F]`.
+You can also use directly `RabbitMQ`.
 You can then use the `rabbitmqModule` to perform RabbitMQ operations.
 
 === RabbitMQ Operations
@@ -62,7 +62,7 @@ You can then use the `rabbitmqModule` to perform RabbitMQ operations.
 import pillars.redis.*
 
 for
-    client <- RabbitMQ[IO](configFor(container)).map(_.client)
+    client <- RabbitMQ(configFor(container)).map(_.client)
     _      <- client.createConnectionChannel.evalMap: implicit channel =>
                   for
                       publisher  <- client.createPublisher[String](exchange, routingKey)

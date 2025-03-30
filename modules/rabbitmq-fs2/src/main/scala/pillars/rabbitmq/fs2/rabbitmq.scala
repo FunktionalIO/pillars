@@ -4,9 +4,8 @@
 
 package pillars.rabbitmq.fs2
 
-import cats.effect.Async
+import cats.effect.IO
 import cats.effect.Resource
-import cats.effect.std.Console
 import cats.syntax.applicative.*
 import com.comcast.ip4s.Host
 import com.comcast.ip4s.Port
@@ -16,13 +15,11 @@ import dev.profunktor.fs2rabbit.config.Fs2RabbitConfig
 import dev.profunktor.fs2rabbit.config.Fs2RabbitNodeConfig
 import dev.profunktor.fs2rabbit.interpreter.RabbitClient
 import fs2.io.file.Files
-import fs2.io.net.Network
 import io.circe.Codec
 import io.circe.derivation.Configuration
 import io.github.iltotore.iron.*
 import io.github.iltotore.iron.circe.given
 import io.github.iltotore.iron.constraint.all.*
-import org.typelevel.otel4s.trace.Tracer
 import pillars.Config.Secret
 import pillars.Module
 import pillars.Modules
@@ -35,16 +32,16 @@ import scala.concurrent.duration.DurationInt
 import scala.concurrent.duration.FiniteDuration
 import scala.language.postfixOps
 
-def rabbit[F[_]](using p: Pillars[F]): RabbitMQ[F] = p.module[RabbitMQ[F]](RabbitMQ.Key)
+def rabbit(using p: Pillars): RabbitMQ = p.module[RabbitMQ](RabbitMQ.Key)
 
-final case class RabbitMQ[F[_]: Async](config: RabbitMQConfig, client: RabbitClient[F]) extends Module[F]:
+final case class RabbitMQ(config: RabbitMQConfig, client: RabbitClient[IO]) extends Module:
     override type ModuleConfig = RabbitMQConfig
     export client.*
 
-    override def probes: List[Probe[F]] =
-        val probe = new Probe[F]:
+    override def probes: List[Probe] =
+        val probe = new Probe:
             override def component: Component = Component(Component.Name("rabbitmq"), Component.Type.Datastore)
-            override def check: F[Boolean]    = true.pure[F]
+            override def check: IO[Boolean]   = true.pure[IO]
         probe.pure[List]
     end probes
 end RabbitMQ
@@ -53,24 +50,24 @@ object RabbitMQ extends ModuleSupport:
     case object Key extends Module.Key:
         override val name: String = "rabbitmq"
 
-    def apply[F[_]](using p: Pillars[F]): RabbitMQ[F] = p.module[RabbitMQ[F]](RabbitMQ.Key)
+    def apply(using p: Pillars): RabbitMQ = p.module[RabbitMQ](RabbitMQ.Key)
 
-    def apply[F[_]: Async](config: RabbitMQConfig): Resource[F, RabbitMQ[F]] =
-        RabbitClient.default[F](config.convert).resource.map(apply(config, _))
+    def apply(config: RabbitMQConfig): Resource[IO, RabbitMQ] =
+        RabbitClient.default[IO](config.convert).resource.map(apply(config, _))
 
-    override type M[F[_]] = RabbitMQ[F]
+    override type M = RabbitMQ
     override val key: Module.Key = RabbitMQ.Key
 
-    override def load[F[_]: Async: Network: Tracer: Console](
-        context: ModuleSupport.Context[F],
-        modules: Modules[F]
-    ): Resource[F, RabbitMQ[F]] =
+    override def load(
+        context: ModuleSupport.Context,
+        modules: Modules
+    ): Resource[IO, RabbitMQ] =
         import context.*
-        given Files[F] = Files.forAsync[F]
+        given Files[IO] = Files.forIO
         for
             _      <- Resource.eval(logger.info("Loading RabbitMQ module"))
             config <- Resource.eval(reader.read[RabbitMQConfig]("rabbitmq"))
-            client <- RabbitMQ[F](config)
+            client <- RabbitMQ(config)
             _      <- Resource.eval(logger.info("RabbitMQ module loaded"))
         yield client
         end for

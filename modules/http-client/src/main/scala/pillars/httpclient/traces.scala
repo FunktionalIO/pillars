@@ -13,8 +13,8 @@ import org.typelevel.otel4s.trace.Tracer
 import pillars.Observability
 import scala.annotation.tailrec
 
-case class Traces[F[_]: Async](tracer: Tracer[F]):
-    def apply(client: Client[F]): Client[F] =
+case class Traces(tracer: Tracer[IO]):
+    def apply(client: Client[IO]): Client[IO] =
         Client: request =>
             for
                 res      <- tracer
@@ -24,10 +24,10 @@ case class Traces[F[_]: Async](tracer: Tracer[F]):
                                 .build
                                 .resource
                 _        <- res.span.addEvent("Send request").toResource
-                response <- client.run(request).handleErrorWith[Response[F]]: t =>
+                response <- client.run(request).handleErrorWith[Response[IO]]: t =>
                                 res.span.addEvent("Error").toResource !>
                                     res.span.addAttributes(Observability.Attributes.fromError(t)).toResource !>
-                                    Resource.raiseError[F, Response[F], Throwable](t)
+                                    Resource.raiseError[IO, Response[IO], Throwable](t)
                 _        <- res.span.addAttributes(Observability.Attributes.fromResponse(response)).toResource
                 _        <- res.span.addEvent("Request received").toResource
             yield response

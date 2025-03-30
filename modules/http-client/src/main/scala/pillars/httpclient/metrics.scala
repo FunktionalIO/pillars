@@ -4,35 +4,30 @@
 
 package pillars.httpclient
 
-import cats.effect.Async
 import cats.effect.Clock
+import cats.effect.IO
 import cats.effect.Resource
-import cats.effect.syntax.all.*
 import cats.syntax.all.*
 import org.http4s.Request
 import org.http4s.Response
 import org.http4s.Status
 import org.http4s.client.Client
 import org.typelevel.otel4s.Attribute
-import org.typelevel.otel4s.metrics.BucketBoundaries
-import org.typelevel.otel4s.metrics.Counter
-import org.typelevel.otel4s.metrics.Histogram
-import org.typelevel.otel4s.metrics.Meter
-import org.typelevel.otel4s.metrics.UpDownCounter
+import org.typelevel.otel4s.metrics.*
 import pillars.Observability
 import pillars.Observability.*
 import scala.concurrent.duration.FiniteDuration
 
-final case class MetricsCollection[F[_]](
-    responseDuration: Histogram[F, Long],
-    activeRequests: UpDownCounter[F, Long],
-    totalRequests: Counter[F, Long],
-    requestBodySize: Histogram[F, Long],
-    responseBodySize: Histogram[F, Long]
+final case class MetricsCollection(
+    responseDuration: Histogram[IO, Long],
+    activeRequests: UpDownCounter[IO, Long],
+    totalRequests: Counter[IO, Long],
+    requestBodySize: Histogram[IO, Long],
+    responseBodySize: Histogram[IO, Long]
 )
 
 object MetricsCollection:
-    def create[F[_]: Async](meter: Meter[F]): F[MetricsCollection[F]] =
+    def create(meter: Meter[IO]): IO[MetricsCollection] =
         (
           meter.histogram[Long]("http.client.request.duration")
               .withUnit("ms")
@@ -67,15 +62,15 @@ object MetricsCollection:
 end MetricsCollection
 
 object ClientMetrics:
-    def apply[F[_]: Async](observability: Observability[F]): F[ClientMetrics[F]] =
+    def apply(observability: Observability): IO[ClientMetrics] =
         MetricsCollection.create(observability.metrics).map(ClientMetrics.apply)
 
-final case class ClientMetrics[F[_]](metrics: MetricsCollection[F])(using async: Async[F], clock: Clock[F]):
+final case class ClientMetrics(metrics: MetricsCollection):
 
-    def middleware(client: Client[F]): Client[F] =
+    def middleware(client: Client[IO]): Client[IO] =
         Client(instrument(client))
 
-    private def instrument(client: Client[F])(request: Request[F]): Resource[F, Response[F]] =
+    private def instrument(client: Client[IO])(request: Request[IO]): Resource[IO, Response[IO]] =
         val requestAttributes = extractAttributes(request)
 
         def recordRequest(start: FiniteDuration, end: FiniteDuration, attributes: List[Attribute[String]]) =
@@ -84,8 +79,8 @@ final case class ClientMetrics[F[_]](metrics: MetricsCollection[F])(using async:
                 _ <- metrics.totalRequests.inc(attributes*)
             yield ()
 
-        clock.monotonic.toResource.flatMap: start =>
-            val happyPath: Resource[F, Response[F]] =
+        Clock[IO].monotonic.toResource.flatMap: start =>
+            val happyPath: Resource[IO, Response[IO]] =
                 for
                     _                 <- Resource.make(
                                            metrics.activeRequests.inc(requestAttributes*)
@@ -93,30 +88,30 @@ final case class ClientMetrics[F[_]](metrics: MetricsCollection[F])(using async:
                                              metrics.activeRequests.dec(requestAttributes*)
                                          )
                     response          <- client.run(request)
-                    end               <- Resource.eval(clock.monotonic)
+                    end               <- Resource.eval(Clock[IO].monotonic)
                     responseAttributes = extractAttributes(response)
                     _                 <- Resource.eval:
                                              recordRequest(start, end, requestAttributes ++ responseAttributes)
                 yield response
             happyPath.handleErrorWith: (e: Throwable) =>
                 Resource.eval:
-                    clock.monotonic
+                    Clock[IO].monotonic
                         .flatMap: now =>
                             recordRequest(start, now, requestAttributes ++ extractAttributes(e))
                         .flatMap: _ =>
-                            async.raiseError[Response[F]](e)
+                            IO.raiseError[Response[IO]](e)
     end instrument
 
-    private def extractAttributes(value: Request[F] | Response[F] | Throwable) =
+    private def extractAttributes(value: Request[IO] | Response[IO] | Throwable) =
         val l = value match
-            case request: Request[F]   =>
+            case request: Request[IO]   =>
                 List(
                   "http.route"          -> s"${request.uri.path.addEndsWithSlash.renderString}",
                   "http.request.host"   -> s"${request.uri.host.map(_.value).getOrElse("")}",
                   "http.request.method" -> request.method.name,
                   "url.scheme"          -> request.uri.scheme.map(_.value).getOrElse("")
                 )
-            case response: Response[F] =>
+            case response: Response[IO] =>
                 List(
                   "http.response.status"      -> {
                       response.status.responseClass match
@@ -128,7 +123,7 @@ final case class ClientMetrics[F[_]](metrics: MetricsCollection[F])(using async:
                   },
                   "http.response.status_code" -> response.status.code.toString
                 )
-            case e: Throwable          =>
+            case e: Throwable           =>
                 List(
                   "error.type" -> e.getClass.getName
                 )

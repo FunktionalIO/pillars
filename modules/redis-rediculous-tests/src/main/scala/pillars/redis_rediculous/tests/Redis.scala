@@ -4,14 +4,11 @@
 
 package pillars.redis_rediculous.tests
 
-import cats.effect.Async
+import cats.effect.IO
 import cats.effect.Resource
-import cats.effect.std.Console
 import com.comcast.ip4s.Host
 import com.comcast.ip4s.Port
 import com.dimafeng.testcontainers.RedisContainer
-import fs2.io.net.Network
-import org.typelevel.otel4s.trace.Tracer
 import pillars.Module
 import pillars.Modules
 import pillars.ModuleSupport
@@ -19,14 +16,12 @@ import pillars.probes.ProbeConfig
 import pillars.redis_rediculous.RedisConfig
 
 case class Redis(container: RedisContainer) extends ModuleSupport:
-    override type M[F[_]] = pillars.redis_rediculous.Redis[F]
+    override type M = pillars.redis_rediculous.Redis
 
     override def key: Module.Key = pillars.redis_rediculous.Redis.key
 
-    override def load[F[_]: Async: Network: Tracer: Console](
-        context: ModuleSupport.Context[F],
-        modules: Modules[F]
-    ): Resource[F, pillars.redis_rediculous.Redis[F]] = pillars.redis_rediculous.Redis.load[F](redisConfig)
+    override def load(context: ModuleSupport.Context, modules: Modules): Resource[IO, pillars.redis_rediculous.Redis] =
+        pillars.redis_rediculous.Redis.load(redisConfig)
 
     private def redisConfig: RedisConfig =
         RedisConfig(

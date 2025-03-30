@@ -5,14 +5,12 @@
 package pillars.db_doobie
 
 import cats.effect.*
-import cats.effect.std.Console
 import cats.syntax.all.*
 import com.zaxxer.hikari.HikariConfig
 import doobie.*
 import doobie.hikari.HikariTransactor
 import doobie.implicits.*
 import fs2.io.file.Files
-import fs2.io.net.Network
 import io.circe.Codec
 import io.circe.Decoder as CirceDecoder
 import io.circe.Encoder as CirceEncoder
@@ -21,7 +19,6 @@ import io.github.iltotore.iron.*
 import io.github.iltotore.iron.circe.given
 import io.github.iltotore.iron.constraint.all.*
 import java.util.Properties
-import org.typelevel.otel4s.trace.Tracer
 import pillars.Config.*
 import pillars.Module
 import pillars.Modules
@@ -29,43 +26,43 @@ import pillars.ModuleSupport
 import pillars.Pillars
 import pillars.probes.*
 
-final case class DB[F[_]: MonadCancelThrow](config: DatabaseConfig, transactor: Transactor[F]) extends Module[F]:
+final case class DB(config: DatabaseConfig, transactor: Transactor[IO]) extends Module:
     override type ModuleConfig = DatabaseConfig
 
-    override def probes: List[Probe[F]] =
-        val probe = new Probe[F]:
+    override def probes: List[Probe] =
+        val probe = new Probe:
             override def component: Component = Component(Component.Name("db"), Component.Type.Datastore)
-            override def check: F[Boolean]    = sql"select true".query[Boolean].unique.transact(transactor)
+            override def check: IO[Boolean]   = sql"select true".query[Boolean].unique.transact(transactor)
         probe.pure[List]
     end probes
 end DB
 
-def db[F[_]](using p: Pillars[F]): DB[F] = p.module[DB[F]](DB.Key)
+def db(using p: Pillars): DB = p.module[DB](DB.Key)
 
 object DB extends ModuleSupport:
     case object Key extends Module.Key:
         override val name: String = "db-doobie"
 
-    override type M[F[_]] = DB[F]
+    override type M = DB
     override val key: Module.Key = DB.Key
 
-    def load[F[_]: Async: Network: Tracer: Console](
-        context: ModuleSupport.Context[F],
-        modules: Modules[F]
-    ): Resource[F, DB[F]] =
+    def load(
+        context: ModuleSupport.Context,
+        modules: Modules
+    ): Resource[IO, DB] =
         import context.*
-        given Files[F] = Files.forAsync[F]
+        given Files[IO] = Files.forAsync[IO]
         for
             _      <- Resource.eval(logger.info("Loading DB module"))
             config <- Resource.eval(reader.read[DatabaseConfig]("db"))
             _      <- Resource.eval(logger.info("DB module loaded"))
-            xa     <- HikariTransactor.fromHikariConfig[F](config.toHikariConfig)
+            xa     <- HikariTransactor.fromHikariConfig[IO](config.toHikariConfig)
         yield DB(config, xa)
         end for
     end load
 
-    def load[F[_]: Async: Network: Tracer: Console](config: DatabaseConfig): Resource[F, DB[F]] =
-        HikariTransactor.fromHikariConfig[F](config.toHikariConfig).map(xa => DB(config, xa))
+    def load(config: DatabaseConfig): Resource[IO, DB] =
+        HikariTransactor.fromHikariConfig[IO](config.toHikariConfig).map(xa => DB(config, xa))
     end load
 end DB
 

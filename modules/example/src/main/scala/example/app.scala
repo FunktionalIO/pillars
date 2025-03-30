@@ -20,7 +20,7 @@ import skunk.implicits.*
 object app extends pillars.IOApp(DB, DBMigration, FeatureFlags, HttpClient): // // <1>
     def infos: AppInfo = BuildInfo.toAppInfo // // <2>
 
-    def run: Run[IO, IO[Unit]] = // // <3>
+    def run: Run[IO[Unit]] = // // <3>
         for
             _ <- logger.info(s"📚 Welcome to ${config.name}!")
             _ <- dbMigration.migrate("classpath:db-migrations") // // <4>

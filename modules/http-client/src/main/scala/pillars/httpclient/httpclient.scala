@@ -4,13 +4,10 @@
 
 package pillars.httpclient
 
-import cats.effect.Async
+import cats.effect.IO
 import cats.effect.Resource
-import cats.effect.std.Console
-import cats.effect.syntax.all.*
 import cats.syntax.all.*
 import fs2.io.file.Files
-import fs2.io.net.Network
 import io.circe.Codec
 import io.circe.Decoder
 import io.circe.Encoder
@@ -27,7 +24,6 @@ import org.http4s.client.middleware.FollowRedirect
 import org.http4s.client.middleware.Logger
 import org.http4s.headers.`User-Agent`
 import org.http4s.netty.client.NettyClientBuilder
-import org.typelevel.otel4s.trace.Tracer
 import pillars.Logging
 import pillars.Module
 import pillars.Modules
@@ -45,42 +41,42 @@ import sttp.tapir.ValidationError
 import sttp.tapir.client.http4s.Http4sClientInterpreter
 import sttp.tapir.client.http4s.Http4sClientOptions
 
-def http[F[_]](using p: Pillars[F]): HttpClient[F] = p.module[HttpClient[F]](HttpClient.Key)
+def http(using p: Pillars): HttpClient = p.module[HttpClient](HttpClient.Key)
 
-final case class HttpClient[F[_]: Async](config: HttpClient.Config)(client: org.http4s.client.Client[F])
-    extends pillars.Module[F], Client[F]:
+final case class HttpClient(config: HttpClient.Config)(client: org.http4s.client.Client[IO])
+    extends pillars.Module, Client[IO]:
     override type ModuleConfig = HttpClient.Config
     export client.*
 
-    private val interpreter = Http4sClientInterpreter[F](Http4sClientOptions.default)
+    private val interpreter = Http4sClientInterpreter[IO](Http4sClientOptions.default)
 
     def call[SI, I, EO, O, R](
         endpoint: PublicEndpoint[I, EO, O, R],
         uri: Option[Uri],
-        handler: FailureHandler[F, EO, O] = FailureHandler.default[F, EO, O]
-    )(input: I): F[Either[EO, O]] =
+        handler: FailureHandler[EO, O] = FailureHandler.default[EO, O]
+    )(input: I): IO[Either[EO, O]] =
         callRequest(endpoint, uri)(interpreter.toRequest(endpoint, uri)(input))
     end call
 
     def callSecure[SI, I, EO, O, R](
         endpoint: Endpoint[SI, I, EO, O, R],
         uri: Option[Uri],
-        handler: FailureHandler[F, EO, O] = FailureHandler.default[F, EO, O]
-    )(securityInput: SI, input: I): F[Either[EO, O]] =
+        handler: FailureHandler[EO, O] = FailureHandler.default[EO, O]
+    )(securityInput: SI, input: I): IO[Either[EO, O]] =
         callRequest(endpoint, uri)(interpreter.toSecureRequest(endpoint, uri)(securityInput)(input))
     end callSecure
 
     private def callRequest[I, EO, O](
         endpoint: AnyEndpoint,
         uri: Option[Uri],
-        handler: FailureHandler[F, EO, O] = FailureHandler.default[F, EO, O]
-    )(interpret: (Request[F], Response[F] => F[DecodeResult[Either[EO, O]]])) =
+        handler: FailureHandler[EO, O] = FailureHandler.default[EO, O]
+    )(interpret: (Request[IO], Response[IO] => IO[DecodeResult[Either[EO, O]]])) =
         val (request, parseResponse) = interpret
         client
             .run(request)
             .use(parseResponse)
             .flatMap:
-                case DecodeResult.Value(v)         => v.pure[F]
+                case DecodeResult.Value(v)         => v.pure[IO]
                 case failure: DecodeResult.Failure => handler.handle(endpoint, uri, failure)
     end callRequest
 
@@ -90,22 +86,22 @@ object HttpClient extends ModuleSupport:
     case object Key extends Module.Key:
         override def name: String = "http-client"
 
-    override type M[F[_]] = HttpClient[F]
+    override type M = HttpClient
 
     override def key: Module.Key = HttpClient.Key
 
-    override def load[F[_]: Async: Network: Tracer: Console](
-        context: pillars.ModuleSupport.Context[F],
-        modules: Modules[F]
-    ): Resource[F, HttpClient[F]] =
+    override def load(
+        context: pillars.ModuleSupport.Context,
+        modules: Modules
+    ): Resource[IO, HttpClient] =
         import context.*
-        given Files[F] = Files.forAsync[F]
+        given Files[IO] = Files.forIO
 
         for
             _       <- Resource.eval(logger.info("Loading HTTP client module"))
             conf    <- Resource.eval(reader.read[HttpClient.Config]("http-client"))
             metrics <- ClientMetrics(observability).toResource
-            client  <- NettyClientBuilder[F]
+            client  <- NettyClientBuilder[IO]
                            .withHttp2
                            .withNioTransport
                            .withUserAgent(conf.userAgent)
@@ -114,14 +110,14 @@ object HttpClient extends ModuleSupport:
                            .map: client =>
                                val logging        =
                                    if conf.logging.enabled then
-                                       Logger[F](
+                                       Logger[IO](
                                          logHeaders = conf.logging.headers,
                                          logBody = conf.logging.body,
                                          logAction = conf.logging.logAction
                                        )
-                                   else identity[Client[F]]
+                                   else identity[Client[IO]]
                                val followRedirect =
-                                   if conf.followRedirect then FollowRedirect[F](10) else identity[Client[F]]
+                                   if conf.followRedirect then FollowRedirect[IO](10) else identity[Client[IO]]
                                client
                                    |> metrics.middleware
                                    |> logging
@@ -188,39 +184,39 @@ object HttpClient extends ModuleSupport:
 
 end HttpClient
 
-trait FailureHandler[F[_], EO, O]:
-    def handle(endpoint: AnyEndpoint, uri: Option[Uri], failure: DecodeResult.Failure): F[Either[EO, O]]
+trait FailureHandler[EO, O]:
+    def handle(endpoint: AnyEndpoint, uri: Option[Uri], failure: DecodeResult.Failure): IO[Either[EO, O]]
 
 object FailureHandler:
-    def default[F[_]: Async, EO, O]: FailureHandler[F, EO, O] =
+    def default[EO, O]: FailureHandler[EO, O] =
         (endpoint: AnyEndpoint, uri: Option[Uri], failure: DecodeResult.Failure) =>
             import HttpClient.Error.*
             failure match
                 case DecodeResult.Error(raw, error)          =>
-                    DecodingError(endpoint, uri, raw, error).raiseError[F, Either[EO, O]]
-                case DecodeResult.Missing                    => Missing(endpoint, uri).raiseError[F, Either[EO, O]]
-                case DecodeResult.Multiple(vs)               => Multiple(endpoint, uri, vs).raiseError[F, Either[EO, O]]
+                    DecodingError(endpoint, uri, raw, error).raiseError[IO, Either[EO, O]]
+                case DecodeResult.Missing                    => Missing(endpoint, uri).raiseError[IO, Either[EO, O]]
+                case DecodeResult.Multiple(vs)               => Multiple(endpoint, uri, vs).raiseError[IO, Either[EO, O]]
                 case DecodeResult.Mismatch(expected, actual) =>
-                    Mismatch(endpoint, uri, expected, actual).raiseError[F, Either[EO, O]]
+                    Mismatch(endpoint, uri, expected, actual).raiseError[IO, Either[EO, O]]
                 case DecodeResult.InvalidValue(errors)       =>
-                    InvalidInput(endpoint, uri, errors).raiseError[F, Either[EO, O]]
+                    InvalidInput(endpoint, uri, errors).raiseError[IO, Either[EO, O]]
             end match
 end FailureHandler
 
 private[httpclient] final case class Config(followRedirect: Boolean)
 
 extension [I, EO, O, R](endpoint: PublicEndpoint[I, EO, O, R])
-    def call[F[_]](uri: Option[Uri])(input: I): Run[F, F[Either[EO, O]]] =
+    def call(uri: Option[Uri])(input: I): Run[IO[Either[EO, O]]] =
         http.call(endpoint, uri)(input)
 
 extension [SI, I, EO, O, R](endpoint: Endpoint[SI, I, EO, O, R])
-    def call[F[_]](uri: Option[Uri])(securityInput: SI, input: I): Run[F, F[Either[EO, O]]] =
+    def call(uri: Option[Uri])(securityInput: SI, input: I): Run[IO[Either[EO, O]]] =
         http.callSecure(endpoint, uri)(securityInput, input)
 
 //trait ClientMiddleware:
-//    implicit class ClientMiddlewareOps[F[_]: Tracer: Async, A](client: Client[F]):
-//        def runTraced(request: Request[F]): F[Response[F]] =
-//            Tracer[F].spanBuilder("client-request")
+//    implicit class ClientMiddlewareOps(client: Client[IO]):
+//        def runTraced(request: Request[IO]): F[Response[IO]] =
+//            Tracer[IO].spanBuilder("client-request")
 //                .addAttribute(Attribute("http.method", request.method.name))
 //                .addAttribute(Attribute("http.url", request.uri.renderString))
 //                .withSpanKind(SpanKind.Client)
