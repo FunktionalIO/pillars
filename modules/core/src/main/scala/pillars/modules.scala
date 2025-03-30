@@ -48,7 +48,7 @@ trait ModuleSupport:
 
     def dependsOn: Set[ModuleSupport] = Set.empty
 
-    def load[F[_]: {Async, Network, Tracer, Console}](
+    def load[F[_]: Async: Network: Tracer: Console](
         context: ModuleSupport.Context[F],
         modules: Modules[F] = Modules.empty
     ): Resource[F, M[F]]
@@ -56,7 +56,7 @@ trait ModuleSupport:
 end ModuleSupport
 
 object ModuleSupport:
-    final case class Context[F[_]: {Async, Network, Tracer, Console}](
+    final case class Context[F[_]: Async: Network: Tracer: Console](
         observability: Observability[F],
         reader: Reader[F],
         logger: Scribe[F]

@@ -14,5 +14,5 @@ import pillars.Module
 
 trait ModuleTestSupport:
     def key: Module.Key
-    def load[F[_]: {Async, Network, Tracer, Console}](container: Container): Option[Resource[F, Module[F[_]]]]
+    def load[F[_]: Async: Network: Tracer: Console](container: Container): Option[Resource[F, Module[F[_]]]]
 end ModuleTestSupport

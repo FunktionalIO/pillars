@@ -4,7 +4,6 @@
 
 package pillars.rabbitmq.fs2
 
-import cats.data.NonEmptyList
 import cats.effect.IO
 import com.comcast.ip4s.*
 import com.dimafeng.testcontainers.RabbitMQContainer
@@ -44,12 +43,8 @@ class RabbitMQTests extends CatsEffectSuite, TestContainerForEach:
     given Tracer[IO] = Tracer.noop[IO]
 
     private def configFor(container: RabbitMQContainer): RabbitMQConfig = RabbitMQConfig(
-      nodes = NonEmptyList.one(
-        RabbitMQConfig.Node(
-          host = Host.fromString(container.host).get,
-          port = Port.fromInt(container.container.getMappedPort(5672)).get
-        )
-      )
+      host = Host.fromString(container.host).get,
+      port = Port.fromInt(container.container.getMappedPort(5672)).get
     )
 
     test("allow exchanging messages"):

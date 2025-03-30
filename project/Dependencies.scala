@@ -1,7 +1,7 @@
 import sbt.*
 
 object versions {
-    val scala            = "3.6.4"
+    val scala            = "3.3.5"
     // Dependencies
     val cats             = "2.13.0"
     val catsEffect       = "3.6.0"
@@ -9,9 +9,9 @@ object versions {
     val circeYaml        = "0.15.3"
     val decline          = "2.5.0"
     val doobie           = "1.0.0-RC8"
-    val flyway           = "11.4.1"
-    val fs2              = "3.11.0"
-    val fs2Rabbit        = "5.4.1"
+    val flyway           = "11.5.0"
+    val fs2              = "3.12.0"
+    val fs2Rabbit        = "5.2.0"
     val http4s           = "0.23.30"
     val http4sNetty      = "0.5.23"
     val ip4s             = "3.6.0"

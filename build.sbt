@@ -1,3 +1,4 @@
+import sbt.ThisBuild
 import xerial.sbt.Sonatype.GitHubHosting
 import xerial.sbt.Sonatype.sonatypeCentralHost
 
@@ -31,21 +32,16 @@ ThisBuild / tlCiDependencyGraphJob   := true
 ThisBuild / autoAPIMappings          := true
 
 lazy val sharedSettings = Seq(
-  scalacOptions ++= List(
-    "-Yexplicit-nulls",
-    "-source",
-    "3.7"
-  ),
-  libraryDependencies ++= Seq(
-    "org.scalameta" %% "munit" % versions.munit.core % Test
-  ),
+  organizationName := "Funktional.io",
+  libraryDependencies ++= Seq("org.scalameta" %% "munit" % versions.munit.core % Test),
+  scalaVersion     := versions.scala,
   // Headers
-  headerMappings := headerMappings.value + (HeaderFileType.scala -> HeaderCommentStyle.cppStyleLineComment),
-  headerLicense  := Some(HeaderLicense.Custom(
+  headerMappings   := headerMappings.value + (HeaderFileType.scala -> HeaderCommentStyle.cppStyleLineComment),
+  headerLicense    := Some(HeaderLicense.Custom(
     """|Copyright (c) 2024-2024 by Raphaël Lemaitre and Contributors
-           |This software is licensed under the Eclipse Public License v2.0 (EPL-2.0).
-           |For more information see LICENSE or https://opensource.org/license/epl-2-0
-           |""".stripMargin
+       |This software is licensed under the Eclipse Public License v2.0 (EPL-2.0).
+       |For more information see LICENSE or https://opensource.org/license/epl-2-0
+       |""".stripMargin
   ))
 )
 
@@ -57,13 +53,28 @@ val libDependencySchemes = Seq(
   "org.typelevel" %% "otel4s-core-trace" % VersionScheme.Always
 )
 
-def module(module: String, pkg: String, dependencies: Seq[ModuleID] = Seq.empty, desc: String = "") =
+publish / skip := true
+lazy val noPublish = Seq(
+  publish         := {},
+  publishLocal    := {},
+  publishArtifact := false,
+  publish / skip  := true
+)
+
+def module(
+    module: String,
+    pkg: String,
+    dependencies: Seq[ModuleID] = Seq.empty,
+    desc: String = ""
+)                   =
     Project(module, file(s"modules/$module"))
         .enablePlugins(BuildInfoPlugin)
         .settings(sharedSettings)
         .settings(
           name                   := s"pillars-$module",
           description            := desc,
+          scalaVersion           := versions.scala,
+          scalafmtOnCompile      := true,
           libraryDependencies ++= dependencies,
           buildInfoKeys          := Seq[BuildInfoKey](name, version, description),
           buildInfoOptions       := Seq(BuildInfoOption.Traits("pillars.BuildInfo")),
@@ -168,14 +179,16 @@ lazy val rabbitmqFs2 = module(
       Dependencies.tests ++
       Dependencies.testContainersRabbit.map(_ % Test),
   "pillars-rabbitmq-fs2 is a scala 3 library providing RabbitMQ services for writing backend applications using fs2-rabbit"
-).dependsOn(core)
+)
+    .dependsOn(core)
 
 lazy val rabbitMQTests = module(
   "rabbitmq-fs2-tests",
   "pillars.rabbitmq.fs2.tests",
   Dependencies.munit ++ Dependencies.testContainersRabbit,
   "pillars-munit-rabbitmq-fs2 is a scala 3 library providing test helpers for writing backend applications using fs2-rabbit"
-).dependsOn(coreTests, rabbitmqFs2)
+)
+    .dependsOn(coreTests, rabbitmqFs2)
 
 lazy val flags = module(
   "flags",
@@ -213,19 +226,19 @@ lazy val example = Project("pillars-example", file("modules/example"))
       buildInfoKeys          := Seq[BuildInfoKey](name, version, description),                // //<5>
       buildInfoOptions       := Seq(BuildInfoOption.Traits("pillars.BuildInfo")),             // //<6>
       buildInfoPackage       := "example.build",                                              // //<7>
-      publish / skip         := true,
       tlMimaPreviousVersions := Set.empty,
       libraryDependencySchemes ++= libDependencySchemes,
       unusedCompileDependenciesFilter -= moduleFilter("org.typelevel", "scalac-compat-annotation")
     )
+    .settings(noPublish)
     .dependsOn(core, dbSkunk, flags, httpClient, dbMigrations)
 // end::example[]
 
 lazy val docs = Project("pillars-docs", file("modules/docs"))
+    .enablePlugins(NoPublishPlugin)
     .settings(sharedSettings)
     .settings(
       name                   := "pillars-docs",
-      publish / skip         := true,
       tlMimaPreviousVersions := Set.empty,
       libraryDependencySchemes ++= libDependencySchemes,
       unusedCompileDependenciesFilter -= moduleFilter("org.typelevel", "scalac-compat-annotation")
@@ -256,8 +269,6 @@ lazy val pillars = project
     .settings(sharedSettings)
     .settings(
       name                                       := "pillars",
-      publish / skip                             := true,
-      publishArtifact                            := false,
       tlMimaPreviousVersions                     := Set.empty,
       ScalaUnidoc / unidoc / unidocProjectFilter := inAnyProject -- inProjects(example, docs),
       ScalaUnidoc / unidoc / target              := file("target/microsite/output/api"),
@@ -269,7 +280,9 @@ lazy val pillars = project
         "-project-logo",
         "modules/docs/src/docs/images/logo.png",
         //    "-source-links:github://FunktionalIO/pillars",
-        "-social-links:github::https://github.com/FunktionalIO/pillars"
+        "-social-links:github::https://github.com/FunktionalIO/pillars",
+        "-no-link-warnings"
       ),
       unusedCompileDependenciesFilter -= moduleFilter("org.typelevel", "scalac-compat-annotation")
     )
+    .settings(noPublish)

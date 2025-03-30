@@ -13,6 +13,9 @@ ifndef::projectRootDir[]
 :projectRootDir: ../../../../../..
 endif::projectRootDir[]
 
+[NOTE]
+The RabbitMQ module is only compiled for Scala Next version.
+
 The `RabbitMQ` module provides integration with https://www.rabbitmq.com[RabbitMQ].
 It uses the https://github.com/profunktor/fs2-rabbit[fs2-rabbit] library.
 
@@ -60,14 +63,13 @@ import pillars.redis.*
 
 for
     client <- RabbitMQ[IO](configFor(container)).map(_.client)
-    _      <- client.createConnectionChannel.evalMap { implicit channel =>
+    _      <- client.createConnectionChannel.evalMap: implicit channel =>
                   for
                       publisher  <- client.createPublisher[String](exchange, routingKey)
                       _          <- publisher("test message")
                       subscriber <- client.createAutoAckConsumer[String](queue)
                       out        <- subscriber.head.compile.onlyOrError
                   yield assertEquals(out.payload, "test message")
-              }
 yield ()
 end for
 --

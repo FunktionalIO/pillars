@@ -58,7 +58,7 @@ object $Prefix$Module extends ModuleDef:
     override type M[F[_]] = $Prefix$[F]
     override val key: Module.Key = $Prefix$.Key
 
-    override def load[F[_]: {Async, Network, Tracer, Console}](
+    override def load[F[_]: Async: Network: Tracer: Console](
         context: Loader.Context[F],
         modules: Modules[F]
     ): Resource[F, $Prefix$[F]] =

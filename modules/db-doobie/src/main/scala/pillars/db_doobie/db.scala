@@ -49,7 +49,7 @@ object DB extends ModuleSupport:
     override type M[F[_]] = DB[F]
     override val key: Module.Key = DB.Key
 
-    def load[F[_]: {Async, Network, Tracer, Console}](
+    def load[F[_]: Async: Network: Tracer: Console](
         context: ModuleSupport.Context[F],
         modules: Modules[F]
     ): Resource[F, DB[F]] =
@@ -64,7 +64,7 @@ object DB extends ModuleSupport:
         end for
     end load
 
-    def load[F[_]: {Async, Network, Tracer, Console}](config: DatabaseConfig): Resource[F, DB[F]] =
+    def load[F[_]: Async: Network: Tracer: Console](config: DatabaseConfig): Resource[F, DB[F]] =
         HikariTransactor.fromHikariConfig[F](config.toHikariConfig).map(xa => DB(config, xa))
     end load
 end DB

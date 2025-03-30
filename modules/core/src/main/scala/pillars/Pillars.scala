@@ -77,7 +77,7 @@ object Pillars:
      * @param path The path to the configuration file.
      * @return a resource that will create a new instance of Pillars.
      */
-    def apply[F[_]: {LiftIO, Async, Console, Network, Parallel}](
+    def apply[F[_]: LiftIO: Async: Console: Network: Parallel](
         infos: AppInfo,
         modules: Seq[ModuleSupport],
         path: Path
@@ -118,7 +118,7 @@ object Pillars:
      * @param context The context for loading the modules.
      * @return a resource that will instantiate the modules.
      */
-    private def loadModules[F[_]: {Async, Network, Tracer, Console}](
+    private def loadModules[F[_]: Async: Network: Tracer: Console](
         modules: Seq[ModuleSupport],
         context: ModuleSupport.Context[F]
     ): Resource[F, Modules[F]] =

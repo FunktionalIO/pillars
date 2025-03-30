@@ -74,11 +74,11 @@ jobs:
 
       - name: Make target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v'))
-        run: mkdir -p modules/redis-rediculous/target modules/core-tests/target modules/redis-rediculous-tests/target modules/db-migration/target modules/example/target modules/flags/target modules/http-client/target modules/rabbitmq-fs2-tests/target modules/db-skunk-tests/target modules/rabbitmq-fs2/target modules/db-skunk/target modules/db-migration-tests/target modules/http-client-tests/target modules/db-doobie/target modules/docs/target modules/db-doobie-tests/target modules/core/target project/target
+        run: mkdir -p modules/redis-rediculous/target modules/core-tests/target modules/redis-rediculous-tests/target modules/db-migration/target modules/flags/target modules/http-client/target modules/rabbitmq-fs2-tests/target modules/db-skunk-tests/target modules/rabbitmq-fs2/target modules/db-skunk/target modules/db-migration-tests/target modules/http-client-tests/target modules/db-doobie/target modules/db-doobie-tests/target modules/core/target project/target
 
       - name: Compress target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v'))
-        run: tar cf targets.tar modules/redis-rediculous/target modules/core-tests/target modules/redis-rediculous-tests/target modules/db-migration/target modules/example/target modules/flags/target modules/http-client/target modules/rabbitmq-fs2-tests/target modules/db-skunk-tests/target modules/rabbitmq-fs2/target modules/db-skunk/target modules/db-migration-tests/target modules/http-client-tests/target modules/db-doobie/target modules/docs/target modules/db-doobie-tests/target modules/core/target project/target
+        run: tar cf targets.tar modules/redis-rediculous/target modules/core-tests/target modules/redis-rediculous-tests/target modules/db-migration/target modules/flags/target modules/http-client/target modules/rabbitmq-fs2-tests/target modules/db-skunk-tests/target modules/rabbitmq-fs2/target modules/db-skunk/target modules/db-migration-tests/target modules/http-client-tests/target modules/db-doobie/target modules/db-doobie-tests/target modules/core/target project/target
 
       - name: Upload target directories
         if: github.event_name != 'pull_request' && (startsWith(github.ref, 'refs/tags/v'))
@@ -185,6 +185,7 @@ jobs:
       - name: Submit Dependencies
         uses: scalacenter/sbt-dependency-submission@v2
         with:
+          modules-ignore: pillars-docs_3
           configs-ignore: test scala-tool scala-doc-tool test-internal
 
   validate-steward:

@@ -4,7 +4,6 @@
 
 package pillars.rabbitmq.fs2
 
-import cats.data.NonEmptyList
 import cats.effect.Async
 import cats.effect.Resource
 import cats.effect.std.Console
@@ -62,7 +61,7 @@ object RabbitMQ extends ModuleSupport:
     override type M[F[_]] = RabbitMQ[F]
     override val key: Module.Key = RabbitMQ.Key
 
-    override def load[F[_]: {Async, Network, Tracer, Console}](
+    override def load[F[_]: Async: Network: Tracer: Console](
         context: ModuleSupport.Context[F],
         modules: Modules[F]
     ): Resource[F, RabbitMQ[F]] =
@@ -80,7 +79,8 @@ object RabbitMQ extends ModuleSupport:
 end RabbitMQ
 
 case class RabbitMQConfig(
-    nodes: NonEmptyList[RabbitMQConfig.Node] = NonEmptyList.one(RabbitMQConfig.Node(host"localhost", port"5672")),
+    host: Host = host"localhost",
+    port: Port = port"5672",
     virtualHost: RabbitMQVirtualHost = RabbitMQVirtualHost("/"),
     connectionTimeout: FiniteDuration = 5 seconds,
     ssl: Boolean = true,
@@ -104,7 +104,8 @@ object RabbitMQConfig:
         node => Fs2RabbitNodeConfig(node.host.toString, node.port.value)
     given Conversion[RabbitMQConfig, Fs2RabbitConfig]          = cfg =>
         Fs2RabbitConfig(
-          nodes = cfg.nodes.map(_.convert),
+          host = cfg.host.toString,
+          port = cfg.port.value,
           virtualHost = cfg.virtualHost,
           connectionTimeout = cfg.connectionTimeout,
           ssl = cfg.ssl,
@@ -115,7 +116,6 @@ object RabbitMQConfig:
           internalQueueSize = cfg.internalQueueSize,
           requestedHeartbeat = cfg.requestedHeartbeat,
           automaticRecovery = cfg.automaticRecovery,
-          automaticTopologyRecovery = cfg.automaticTopologyRecovery,
           clientProvidedConnectionName = cfg.clientProvidedConnectionName
         )
 end RabbitMQConfig

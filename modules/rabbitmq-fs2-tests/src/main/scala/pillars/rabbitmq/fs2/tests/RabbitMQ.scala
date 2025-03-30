@@ -4,7 +4,6 @@
 
 package pillars.rabbitmq.fs2.tests
 
-import cats.data.NonEmptyList
 import cats.effect.Async
 import cats.effect.Resource
 import cats.effect.std.Console
@@ -20,21 +19,17 @@ import pillars.rabbitmq.fs2.RabbitMQ as RabbitMQModule
 import pillars.rabbitmq.fs2.RabbitMQConfig
 
 case class RabbitMQ(container: RabbitMQContainer) extends ModuleSupport:
-    override type M = RabbitMQModule
+    override type M[F[_]] = RabbitMQModule[F[_]]
 
     override def key: Module.Key = RabbitMQModule.Key
 
-    override def load[F[_]: {Async, Network, Tracer, Console}](
+    override def load[F[_]: Async: Network: Tracer: Console](
         context: ModuleSupport.Context[F],
         modules: Modules[F]
     ): Resource[F, RabbitMQModule[F]] = RabbitMQModule(config)
 
     private val config = RabbitMQConfig(
-      nodes = NonEmptyList.one(
-        RabbitMQConfig.Node(
-          host = Host.fromString(container.host).get,
-          port = Port.fromInt(container.amqpPort).get
-        )
-      )
+      host = Host.fromString(container.host).get,
+      port = Port.fromInt(container.amqpPort).get
     )
 end RabbitMQ

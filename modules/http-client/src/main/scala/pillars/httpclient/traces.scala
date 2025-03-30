@@ -24,7 +24,7 @@ case class Traces[F[_]: Async](tracer: Tracer[F]):
                                 .build
                                 .resource
                 _        <- res.span.addEvent("Send request").toResource
-                response <- client.run(request).handleErrorWith[Response[F], Throwable]: t =>
+                response <- client.run(request).handleErrorWith[Response[F]]: t =>
                                 res.span.addEvent("Error").toResource !>
                                     res.span.addAttributes(Observability.Attributes.fromError(t)).toResource !>
                                     Resource.raiseError[F, Response[F], Throwable](t)

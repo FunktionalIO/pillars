@@ -19,11 +19,11 @@ import pillars.db_doobie.*
 import pillars.probes.ProbeConfig
 
 case class DB(container: JdbcDatabaseContainer) extends ModuleSupport:
-    override type M = pillars.db_doobie.DB
+    override type M[F[_]] = pillars.db_doobie.DB[F]
 
     override def key: Module.Key = pillars.db_doobie.DB.key
 
-    override def load[F[_]: {Async, Network, Tracer, Console}](
+    override def load[F[_]: Async: Network: Tracer: Console](
         context: ModuleSupport.Context[F],
         modules: Modules[F]
     ): Resource[F, pillars.db_doobie.DB[F]] = pillars.db_doobie.DB.load[F](dbConfig)

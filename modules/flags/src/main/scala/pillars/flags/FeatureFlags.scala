@@ -54,7 +54,7 @@ object FeatureFlags extends ModuleSupport:
 
     override def key: Module.Key = FeatureFlags.Key
 
-    def load[F[_]: {Async, Network, Tracer, Console}](
+    def load[F[_]: Async: Network: Tracer: Console](
         context: ModuleSupport.Context[F],
         modules: Modules[F]
     ): Resource[F, FeatureFlags[F]] =
@@ -69,7 +69,7 @@ object FeatureFlags extends ModuleSupport:
             yield manager
     end load
 
-    private[flags] def createManager[F[_]: {Async, Network, Tracer, Console}](conf: FlagsConfig): F[FeatureFlags[F]] =
+    private[flags] def createManager[F[_]: Async: Network: Tracer: Console](conf: FlagsConfig): F[FeatureFlags[F]] =
         if !conf.enabled then Sync[F].pure(FeatureFlags.noop[F](conf))
         else
             val flags = conf.flags.groupBy(_.name).map((name, flags) => name -> flags.head)

@@ -94,7 +94,7 @@ object HttpClient extends ModuleSupport:
 
     override def key: Module.Key = HttpClient.Key
 
-    override def load[F[_]: {Async, Network, Tracer, Console}](
+    override def load[F[_]: Async: Network: Tracer: Console](
         context: pillars.ModuleSupport.Context[F],
         modules: Modules[F]
     ): Resource[F, HttpClient[F]] =
@@ -218,7 +218,7 @@ extension [SI, I, EO, O, R](endpoint: Endpoint[SI, I, EO, O, R])
         http.callSecure(endpoint, uri)(securityInput, input)
 
 //trait ClientMiddleware:
-//    implicit class ClientMiddlewareOps[F[_]: {Tracer, Async}, A](client: Client[F]):
+//    implicit class ClientMiddlewareOps[F[_]: Tracer: Async, A](client: Client[F]):
 //        def runTraced(request: Request[F]): F[Response[F]] =
 //            Tracer[F].spanBuilder("client-request")
 //                .addAttribute(Attribute("http.method", request.method.name))

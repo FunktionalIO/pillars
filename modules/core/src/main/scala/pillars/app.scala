@@ -19,7 +19,7 @@ import pillars.App.Name
 import pillars.App.Version
 import pillars.probes.Probe
 
-abstract class App[F[_]: {LiftIO, Async, Console, Network, Parallel}](val modules: ModuleSupport*):
+abstract class App[F[_]: LiftIO: Async: Console: Network: Parallel](val modules: ModuleSupport*):
     def infos: AppInfo
     def probes: List[Probe[F]]                = Nil
     def adminControllers: List[Controller[F]] = Nil

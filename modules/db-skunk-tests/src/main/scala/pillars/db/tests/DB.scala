@@ -27,7 +27,7 @@ import pillars.tests.ModuleTestSupport
 object DB extends ModuleTestSupport:
     override def key: Module.Key = DBModule.key
 
-    def load[F[_]: {Async, Network, Tracer, Console}](container: Container): Option[Resource[F, Module[F]]] =
+    def load[F[_]: Async: Network: Tracer: Console](container: Container): Option[Resource[F, Module[F]]] =
         container match
             case c: PostgreSQLContainer => DBModule.load(configFor(c)).some
             case _                      => None

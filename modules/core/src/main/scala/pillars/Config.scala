@@ -80,9 +80,9 @@ object Config:
             s"REDACTED"
 
     object Redacted:
-        given [T: {Decoder, Show}]: Decoder[Redacted[T]] = summon[Decoder[T]].map(Redacted.apply)
+        given [T: Decoder: Show]: Decoder[Redacted[T]] = summon[Decoder[T]].map(Redacted.apply)
 
-        given [T: {Encoder, Show}]: Encoder[Redacted[T]] = summon[Encoder[T]].contramap(_.value)
+        given [T: Encoder: Show]: Encoder[Redacted[T]] = summon[Encoder[T]].contramap(_.value)
     end Redacted
 
     final case class Secret[T](value: T) extends AnyVal:

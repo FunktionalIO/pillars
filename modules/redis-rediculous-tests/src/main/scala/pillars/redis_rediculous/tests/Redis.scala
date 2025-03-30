@@ -19,11 +19,11 @@ import pillars.probes.ProbeConfig
 import pillars.redis_rediculous.RedisConfig
 
 case class Redis(container: RedisContainer) extends ModuleSupport:
-    override type M = pillars.redis_rediculous.Redis
+    override type M[F[_]] = pillars.redis_rediculous.Redis[F]
 
     override def key: Module.Key = pillars.redis_rediculous.Redis.key
 
-    override def load[F[_]: {Async, Network, Tracer, Console}](
+    override def load[F[_]: Async: Network: Tracer: Console](
         context: ModuleSupport.Context[F],
         modules: Modules[F]
     ): Resource[F, pillars.redis_rediculous.Redis[F]] = pillars.redis_rediculous.Redis.load[F](redisConfig)

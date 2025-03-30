@@ -34,7 +34,7 @@ import skunk.util.Typer
 
 def sessions[F[_]](using p: Pillars[F]): DB[F] = p.module[DB[F]](DB.Key)
 
-final case class DB[F[_]: {Async, Network, Tracer, Console}](config: DatabaseConfig, pool: Resource[F, Session[F]])
+final case class DB[F[_]: Async: Network: Tracer: Console](config: DatabaseConfig, pool: Resource[F, Session[F]])
     extends Module[F]:
 
     override type ModuleConfig = DatabaseConfig
@@ -55,7 +55,7 @@ object DB extends ModuleSupport:
     override type M[F[_]] = DB[F]
     override val key: Module.Key = DB.Key
 
-    def load[F[_]: {Async, Network, Tracer, Console}](
+    def load[F[_]: Async: Network: Tracer: Console](
         context: ModuleSupport.Context[F],
         modules: Modules[F]
     ): Resource[F, DB[F]] =
@@ -70,7 +70,7 @@ object DB extends ModuleSupport:
         end for
     end load
 
-    private def createPool[F[_]: {Async, Network, Tracer, Console}](config: DatabaseConfig) =
+    private def createPool[F[_]: Async: Network: Tracer: Console](config: DatabaseConfig) =
         Session.pooled[F](
           host = config.host.toString,
           port = config.port.value,
@@ -89,7 +89,7 @@ object DB extends ModuleSupport:
           ssl = config.ssl
         )
 
-    def load[F[_]: {Async, Network, Tracer, Console}](config: DatabaseConfig): Resource[F, DB[F]] =
+    def load[F[_]: Async: Network: Tracer: Console](config: DatabaseConfig): Resource[F, DB[F]] =
         createPool(config).map(pool => DB(config, pool))
 end DB
 
