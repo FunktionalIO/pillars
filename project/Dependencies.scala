@@ -11,7 +11,7 @@ object versions {
     val doobie           = "1.0.0-RC8"
     val flyway           = "11.5.0"
     val fs2              = "3.12.0"
-    val fs2Rabbit        = "5.2.0"
+    val fs2Rabbit        = "5.4.2"
     val http4s           = "0.23.30"
     val http4sNetty      = "0.5.23"
     val ip4s             = "3.6.0"
