@@ -144,15 +144,16 @@ object probes:
         given Codec[ProbeConfig] = Codec.AsObject.derivedConfigured
     end ProbeConfig
 
+    val livenessController: Controller = List(liveness.serverLogicSuccess(_ => "OK".pure[IO]))
+
     def probesController(manager: ProbeManager): Controller =
-        val alive = liveness.serverLogicSuccess(_ => "OK".pure[IO])
         val ready = readiness.serverLogicSuccess: _ =>
             manager.status.map: statuses =>
                 val checks       = statuses.map: (component, status) =>
                     CheckStatus(component.name, component.`type`, status)
                 val globalStatus = statuses.values.foldLeft(Status.pass)(_ |+| _)
                 HealthStatus(globalStatus, checks.toList)
-        List(alive, ready)
+        livenessController :+ ready
     end probesController
 
     object endpoints:

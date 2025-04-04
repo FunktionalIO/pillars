@@ -5,44 +5,33 @@
 package pillars
 
 import cats.effect.IO
-import cats.effect.Resource.ExitCase
+import cats.effect.Resource
 import cats.syntax.all.*
 import com.comcast.ip4s.*
 import io.circe.Codec
 import io.circe.derivation.Configuration
 import io.github.iltotore.iron.*
-import pillars.Controller.HttpEndpoint
 import pillars.PillarsError.Code
-import scala.annotation.targetName
-import scribe.Scribe
 import sttp.model.StatusCode
 
-trait ApiServer:
-
-    def start(endpoints: List[HttpEndpoint]): IO[Unit]
-
-    @targetName("startWithEndpoints")
-    def start(endpoints: HttpEndpoint*): IO[Unit] = start(endpoints.toList)
-
-    @targetName("startWithControllers")
-    def start(controllers: Controller*): IO[Unit] = start(controllers.toList.flatten)
-
-end ApiServer
-
-def server(using p: Pillars): Run[ApiServer] = p.apiServer
+def server(using p: Pillars): Run[HttpServer] = p.apiServer
 
 object ApiServer:
-    def init(config: Config, infos: AppInfo, observability: Observability, logger: Scribe[IO]): ApiServer =
-        (endpoints: List[HttpEndpoint]) =>
-            IO.whenA(config.enabled):
-                for
-                    _ <- logger.info(s"Starting API server on ${config.http.host}:${config.http.port}")
-                    _ <- HttpServer.build("api", config.http, config.openApi, infos, observability, endpoints)
-                             .onFinalizeCase:
-                                 case ExitCase.Errored(e) => logger.error(s"API server stopped with error: $e")
-                                 case _                   => logger.info("API server stopped")
-                             .useForever
-                yield ()
+    def create(config: Config, infos: AppInfo, context: ModuleSupport.Context): Resource[IO, HttpServer] =
+        if config.enabled then
+            HttpServer(
+              HttpServer.Usage.Api,
+              config.http,
+              config.openApi,
+              infos,
+              context.observability,
+              context.logger,
+              Nil
+            )
+        else
+            HttpServer.noop.pure[IO].toResource
+    end create
+
     trait Error extends PillarsError:
         override def status: StatusCode
         final override def code: Code = Code("API")
@@ -59,5 +48,4 @@ object ApiServer:
 
     private val defaultHttp = HttpServer.Config(host = host"0.0.0.0", port = port"9876", logging = Logging.HttpConfig())
 
-    def noop: ApiServer = _ => IO.unit
 end ApiServer

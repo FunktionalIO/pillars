@@ -6,6 +6,7 @@ package pillars
 
 import cats.effect.IO
 import cats.effect.Resource
+import cats.effect.std.Hotswap
 import com.comcast.ip4s.*
 import io.circe.Codec
 import io.circe.derivation.Configuration
@@ -24,6 +25,8 @@ import org.typelevel.otel4s.trace.Tracer
 import pillars.Controller.HttpEndpoint
 import pillars.codec.given
 import pillars.syntax.all.*
+import scala.concurrent.duration.*
+import scribe.Scribe
 import sttp.capabilities.StreamMaxLengthExceededException
 import sttp.monad.MonadError
 import sttp.tapir.*
@@ -37,8 +40,44 @@ import sttp.tapir.server.model.ValuedEndpointOutput
 import sttp.tapir.swagger.SwaggerUIOptions
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 
+trait HttpServer:
+    def restartWith(endpoints: List[Controller]): IO[Unit]
+
 object HttpServer:
-    def build(
+    enum Usage(val name: String):
+        case Admin                             extends Usage("admin")
+        case Api                               extends Usage("api")
+        case Custom(override val name: String) extends Usage(name)
+
+    def apply(
+        usage: Usage,
+        config: Config,
+        openApi: Config.OpenAPI,
+        infos: AppInfo,
+        observability: Observability,
+        logger: Scribe[IO],
+        initialEndpoints: List[HttpEndpoint]
+    ): Resource[IO, HttpServer] =
+        for
+            _       <- logger.info(s"Creating ${usage.name} server on ${config.host}:${config.port}").toResource
+            _       <- logger.debug(s"${usage.name} server config: $config").toResource
+            _       <- logger.debug(s"App info: $infos").toResource
+            hotswap <- Hotswap.create[IO, Server]
+        yield new HttpServer:
+            override def restartWith(endpoints: List[Controller]): IO[Unit] =
+                for
+                    _ <- logger.info(s"Stopping ${usage.name} server")
+                    _ <- hotswap.clear
+                    _ <- logger.debug(s"${usage.name} server stopped")
+                    _ <- IO.sleep(100.millis)
+                    _ <- hotswap.swap(build(usage.name, config, openApi, infos, observability, endpoints.flatten))
+                    _ <- logger.info(s"${usage.name} server restarted")
+                yield ()
+    end apply
+
+    val noop: HttpServer = (endpoints: List[Controller]) => IO.unit
+
+    private def build(
         name: String,
         config: Config,
         openApi: Config.OpenAPI,
@@ -94,11 +133,15 @@ object HttpServer:
 
         val app: HttpApp[IO] = routes |> logging |> errorHandling |> cors
 
-        NettyServerBuilder[IO].withoutSsl.withNioTransport
-            .bindHttp(config.port.value, config.host.toString)
-            .withHttpApp(app)
-            .withoutBanner
-            .resource
+        for
+            _      <- scribe.cats.io.info(s"Starting $name server on ${config.host}:${config.port}").toResource
+            server <- NettyServerBuilder[IO].withoutSsl.withNioTransport
+                          .bindHttp(config.port.value, config.host.toString)
+                          .withHttpApp(app)
+                          .withoutBanner
+                          .resource
+        yield server
+        end for
     end build
 
     private def exceptionHandler(tracer: Tracer[IO]): ExceptionHandler[IO] =
@@ -126,7 +169,8 @@ object HttpServer:
         extends pillars.Config
 
     object Config:
-        given Configuration         = pillars.Config.defaultCirceConfig
+        given Configuration         =
+            Configuration.default.withKebabCaseMemberNames.withKebabCaseMemberNames.withDefaults.withStrictDecoding
         given Codec[Config.OpenAPI] = Codec.AsObject.derivedConfigured
         given Codec[Config]         = Codec.AsObject.derivedConfigured
 

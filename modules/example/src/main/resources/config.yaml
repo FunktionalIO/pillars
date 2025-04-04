@@ -47,7 +47,7 @@ api:
       body: true
       level: info
   open-api:
-    enabled: false
+    enabled: true
     path-prefix: ["docs"]
     yaml-name: "pillars-example.yaml"
     context-path: []
@@ -66,7 +66,7 @@ admin:
       body: true
       level: debug
   open-api:
-    enabled: false
+    enabled: true
     path-prefix: ["docs"]
     yaml-name: "pillars-example.yaml"
     context-path: []
