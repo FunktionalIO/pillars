@@ -31,7 +31,7 @@ trait Config
 
 object Config:
     val defaultCirceConfig: Configuration =
-        Configuration.default.withSnakeCaseMemberNames.withSnakeCaseConstructorNames.withDefaults
+        Configuration.default.withKebabCaseMemberNames.withKebabCaseConstructorNames.withDefaults
     case class PillarsConfig(
         name: App.Name,
         log: Logging.Config = Logging.Config(),

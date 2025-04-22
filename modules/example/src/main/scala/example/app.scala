@@ -36,9 +36,10 @@ object app extends pillars.IOApp(DB, DBMigration, FeatureFlags, HttpClient): // 
                          size <- response.body.compile.count
                          _    <- logger.info(s"Body: $size bytes")
                      yield ()
-            _ <- server.start(homeController, userController)   // // <5>
         yield ()
         end for
     end run
+
+    override def controllers: Run[List[Controller]] = List(homeController, userController)
 end app
 // end::quick-start[]
