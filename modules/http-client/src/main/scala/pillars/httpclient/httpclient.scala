@@ -100,7 +100,8 @@ object HttpClient extends ModuleSupport:
         for
             _       <- Resource.eval(logger.info("Loading HTTP client module"))
             conf    <- Resource.eval(reader.read[HttpClient.Config]("http-client"))
-            metrics <- ClientMetrics(observability).toResource
+            metrics <- if conf.metrics then ClientMetrics(observability).map(_.middleware).toResource
+                       else Resource.pure(identity[Client[IO]])
             client  <- NettyClientBuilder[IO]
                            .withHttp2
                            .withNioTransport
@@ -119,7 +120,7 @@ object HttpClient extends ModuleSupport:
                                val followRedirect =
                                    if conf.followRedirect then FollowRedirect[IO](10) else identity[Client[IO]]
                                client
-                                   |> metrics.middleware
+                                   |> metrics
                                    |> logging
                                    |> followRedirect
                                    |> HttpClient(conf)
@@ -132,7 +133,8 @@ object HttpClient extends ModuleSupport:
         maxConnections: Int = 10,
         followRedirect: Boolean = true,
         userAgent: `User-Agent` = Config.defaultUserAgent,
-        logging: Logging.HttpConfig = Logging.HttpConfig()
+        logging: Logging.HttpConfig = Logging.HttpConfig(),
+        metrics: Boolean = true
     ) extends pillars.Config
 
     object Config:
