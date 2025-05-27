@@ -40,16 +40,19 @@ abstract class IOApp(override val modules: ModuleSupport*) extends App(modules*)
 
 object App:
     private type NameConstraint = Not[Blank]
-    opaque type Name <: String  = String :| NameConstraint
-    object Name extends RefinedTypeOps[String, NameConstraint, Name]
+    type Name                   = Name.T
+    object Name extends RefinedType[String, NameConstraint]
 
     private type VersionConstraint = SemanticVersion
-    opaque type Version <: String  = String :| VersionConstraint
-    object Version extends RefinedTypeOps[String, VersionConstraint, Version]
+    type Version                   = Version.T
+    object Version extends RefinedType[String, VersionConstraint]
 
     private type DescriptionConstraint = Not[Blank]
-    opaque type Description <: String  = String :| DescriptionConstraint
-    object Description extends RefinedTypeOps[String, DescriptionConstraint, Description]
+    type Description                   = Description.T
+    object Description extends RefinedType[String, DescriptionConstraint]
+    def apply(value: String): Description         = value.asInstanceOf[Description]
+    def unapply(description: Description): String = description.asInstanceOf[String]
+    def assume(description: Description): String  = description.asInstanceOf[String]
 end App
 
 case class AppInfo(name: App.Name, version: App.Version, description: App.Description)
@@ -57,5 +60,5 @@ trait BuildInfo:
     def name: String
     def version: String
     def description: String
-    def toAppInfo: AppInfo = AppInfo(Name(name.assume), Version(version.assume), Description(description.assume))
+    def toAppInfo: AppInfo = AppInfo(Name.assume(name), Version.assume(version), Description.assume(description))
 end BuildInfo

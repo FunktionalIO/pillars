@@ -41,7 +41,7 @@ object FlagController:
         override def code: Code = Code("FLAG")
 
         case FlagNotFound(name: Flag)
-            extends FlagError(ErrorNumber(1), StatusCode.NotFound, Message(s"Flag ${name}not found".assume))
+            extends FlagError(ErrorNumber(1), StatusCode.NotFound, Message.assume(s"Flag ${name}not found"))
     end FlagError
 
     object FlagEndpoints:

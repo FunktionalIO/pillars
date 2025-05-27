@@ -31,8 +31,8 @@ object probes:
 
     object Component:
         private type NameConstraint = Not[Blank] & Not[Contain[":"]]
-        opaque type Name <: String  = String :| NameConstraint
-        object Name extends RefinedTypeOps[String, NameConstraint, Name]
+        type Name                   = Name.T
+        object Name extends RefinedType[String, NameConstraint]
 
         enum Type:
             case System, Datastore, Component

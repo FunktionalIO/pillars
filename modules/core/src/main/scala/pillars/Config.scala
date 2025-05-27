@@ -101,8 +101,9 @@ object Config:
         case ParsingError(cause: Throwable)           extends ConfigError(ErrorNumber(2))
 
         override def message: Message = this match
-            case ConfigError.MissingEnvironmentVariable(name) => Message(s"Missing environment variable $name".assume)
+            case ConfigError.MissingEnvironmentVariable(name) =>
+                Message.assume(s"Missing environment variable $name")
             case ConfigError.ParsingError(cause)              =>
-                Message(s"Failed to parse configuration: ${cause.getMessage}".assume)
+                Message.assume(s"Failed to parse configuration: ${cause.getMessage}")
     end ConfigError
 end Config

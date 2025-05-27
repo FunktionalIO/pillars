@@ -156,41 +156,44 @@ final case class LoggingConfig(
     timing: Boolean = false
 )
 
-private type DatabaseNameConstraint = Not[Blank] DescribedAs "Database name must not be blank"
-opaque type DatabaseName <: String  = String :| DatabaseNameConstraint
+private type DatabaseNameConstraint = DescribedAs[Not[Blank], "Database name must not be blank"]
+type DatabaseName                   = DatabaseName.T
 
-object DatabaseName extends RefinedTypeOps[String, DatabaseNameConstraint, DatabaseName]
+object DatabaseName extends RefinedType[String, DatabaseNameConstraint]
 
-private type DatabaseSchemaConstraint = Not[Blank] DescribedAs "Database schema must not be blank"
-opaque type DatabaseSchema <: String  = String :| DatabaseSchemaConstraint
+private type DatabaseSchemaConstraint = DescribedAs[Not[Blank], "Database schema must not be blank"]
+type DatabaseSchema                   = DatabaseSchema.T
 
-object DatabaseSchema extends RefinedTypeOps[String, DatabaseSchemaConstraint, DatabaseSchema]:
+object DatabaseSchema extends RefinedType[String, DatabaseSchemaConstraint]:
     val public: DatabaseSchema  = DatabaseSchema("public")
     val pillars: DatabaseSchema = DatabaseSchema("pillars")
 
 private type DatabaseTableConstraint =
-    (Not[Blank] & Match["""^[a-zA-Z_][0-9a-zA-Z$_]{0,63}$"""]) DescribedAs "Database table must be at most 64 characters (letter, digit, dollar sign or underscore) long and start with a letter or an underscore"
-opaque type DatabaseTable <: String  = String :| DatabaseTableConstraint
+    DescribedAs[
+      (Not[Blank] & Match["""^[a-zA-Z_][0-9a-zA-Z$_]{0,63}$"""]),
+      "Database table must be at most 64 characters (letter, digit, dollar sign or underscore) long and start with a letter or an underscore"
+    ]
+type DatabaseTable                   = DatabaseTable.T
 
-object DatabaseTable extends RefinedTypeOps[String, DatabaseTableConstraint, DatabaseTable]
+object DatabaseTable extends RefinedType[String, DatabaseTableConstraint]
 
-private type DatabaseUserConstraint = Not[Blank] DescribedAs "Database user must not be blank"
-opaque type DatabaseUser <: String  = String :| DatabaseUserConstraint
+private type DatabaseUserConstraint = DescribedAs[Not[Blank], "Database user must not be blank"]
+type DatabaseUser                   = DatabaseUser.T
 
-object DatabaseUser extends RefinedTypeOps[String, DatabaseUserConstraint, DatabaseUser]
+object DatabaseUser extends RefinedType[String, DatabaseUserConstraint]
 
-private type DatabasePasswordConstraint = Not[Blank] DescribedAs "Database password must not be blank"
-opaque type DatabasePassword <: String  = String :| DatabasePasswordConstraint
+private type DatabasePasswordConstraint = DescribedAs[Not[Blank], "Database password must not be blank"]
+type DatabasePassword                   = DatabasePassword.T
 
-object DatabasePassword extends RefinedTypeOps[String, DatabasePasswordConstraint, DatabasePassword]
+object DatabasePassword extends RefinedType[String, DatabasePasswordConstraint]
 
-private type PoolSizeConstraint = GreaterEqual[1] DescribedAs "Pool size must be greater or equal to 1"
-opaque type PoolSize <: Int     = Int :| PoolSizeConstraint
+private type PoolSizeConstraint = DescribedAs[GreaterEqual[1], "Pool size must be greater or equal to 1"]
+type PoolSize                   = PoolSize.T
 
-object PoolSize extends RefinedTypeOps[Int, PoolSizeConstraint, PoolSize]
+object PoolSize extends RefinedType[Int, PoolSizeConstraint]
 
-private type VersionConstraint      = Not[Blank] & Match["^(\\d+\\.\\d+\\.\\d+)$"] DescribedAs
-    "Schema version must be in the form of X.Y.Z"
-opaque type SchemaVersion <: String = String :| VersionConstraint
+private type VersionConstraint =
+    DescribedAs[Not[Blank] & Match["^(\\d+\\.\\d+\\.\\d+)$"], "Schema version must be in the form of X.Y.Z"]
+type SchemaVersion             = SchemaVersion.T
 
-object SchemaVersion extends RefinedTypeOps[String, Not[Blank] & Match["^(\\d+\\.\\d+\\.\\d+)$"], SchemaVersion]
+object SchemaVersion extends RefinedType[String, Not[Blank] & Match["^(\\d+\\.\\d+\\.\\d+)$"]]

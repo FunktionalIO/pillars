@@ -38,7 +38,7 @@ final case class $Prefix$(client: $Prefix$Client) extends Module:
         val probe = new Probe:
             override def component: Component =
                 Component(Component.Name("$lowerCaseModuleName$"), Component.Type.Datastore)
-            override def check: IO[Boolean]    = true.pure[IO]
+            override def check: IO[Boolean]   = true.pure[IO]
         probe.pure[List]
     end probes
 end $Prefix$
@@ -83,10 +83,10 @@ object $Prefix$Config:
     given Codec[$Prefix$Config] = Codec.AsObject.derivedConfigured
 end $Prefix$Config
 
-private type $Prefix$UserConstraint = Not[Blank] DescribedAs "$Prefix$ user must not be blank"
-opaque type $Prefix$User <: String  = String :| $Prefix$UserConstraint
-object $Prefix$User extends RefinedTypeOps[String, $Prefix$UserConstraint, $Prefix$User]
+private type $Prefix$UserConstraint = DescribedAs[Not[Blank], "$Prefix$ user must not be blank"]
+type $Prefix$User                   = $Prefix$User.T
+object $Prefix$User extends RefinedType[String, $Prefix$UserConstraint]
 
-private type $Prefix$PasswordConstraint = Not[Blank] DescribedAs "$Prefix$ password must not be blank"
-opaque type $Prefix$Password <: String  = String :| $Prefix$PasswordConstraint
-object $Prefix$Password extends RefinedTypeOps[String, $Prefix$PasswordConstraint, $Prefix$Password]
+private type $Prefix$PasswordConstraint = DescribedAs[Not[Blank], "$Prefix$ password must not be blank"]
+type $Prefix$Password                   = $Prefix$Password.T
+object $Prefix$Password extends RefinedType[String, $Prefix$PasswordConstraint]

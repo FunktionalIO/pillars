@@ -47,7 +47,7 @@ final case class DBMigration(config: MigrationConfig) extends Module:
             _ <- IO.delay:
                      flyway(
                        DatabaseSchema.pillars,
-                       DatabaseTable(s"${key.name.replaceAll("[^0-9a-zA-Z$_]", "-")}_schema_history".assume),
+                       DatabaseTable.assume(s"${key.name.replaceAll("[^0-9a-zA-Z$_]", "-")}_schema_history"),
                        "classpath:db/migrations"
                      ).migrate()
             _ <- logger.info(s"Migration completed for module ${key.name}")
@@ -100,35 +100,38 @@ object MigrationConfig:
     given Codec[MigrationConfig] = Codec.AsObject.derivedConfigured
 
 private type JdbcUrlConstraint =
-    Match["jdbc\\:[^:]+\\:.*"] DescribedAs "JDBC URL must be in jdbc:<subprotocol>:<subname> format"
-opaque type JdbcUrl <: String  = String :| JdbcUrlConstraint
+    DescribedAs[Match["jdbc\\:[^:]+\\:.*"], "JDBC URL must be in jdbc:<subprotocol>:<subname> format"]
+type JdbcUrl                   = JdbcUrl.T
 
-object JdbcUrl extends RefinedTypeOps[String, JdbcUrlConstraint, JdbcUrl]
+object JdbcUrl extends RefinedType[String, JdbcUrlConstraint]
 
-private type DatabaseNameConstraint = Not[Blank] DescribedAs "Database name must not be blank"
-opaque type DatabaseName <: String  = String :| DatabaseNameConstraint
+private type DatabaseNameConstraint = DescribedAs[Not[Blank], "Database name must not be blank"]
+type DatabaseName                   = DatabaseName.T
 
-object DatabaseName extends RefinedTypeOps[String, DatabaseNameConstraint, DatabaseName]
+object DatabaseName extends RefinedType[String, DatabaseNameConstraint]
 
-private type DatabaseSchemaConstraint = Not[Blank] DescribedAs "Database schema must not be blank"
-opaque type DatabaseSchema <: String  = String :| DatabaseSchemaConstraint
+private type DatabaseSchemaConstraint = DescribedAs[Not[Blank], "Database schema must not be blank"]
+type DatabaseSchema                   = DatabaseSchema.T
 
-object DatabaseSchema extends RefinedTypeOps[String, DatabaseSchemaConstraint, DatabaseSchema]:
+object DatabaseSchema extends RefinedType[String, DatabaseSchemaConstraint]:
     val public: DatabaseSchema  = DatabaseSchema("public")
     val pillars: DatabaseSchema = DatabaseSchema("pillars")
 
 private type DatabaseTableConstraint =
-    (Not[Blank] & Match["""^[a-zA-Z_][0-9a-zA-Z$_]{0,63}$"""]) DescribedAs "Database table must be at most 64 characters (letter, digit, dollar sign or underscore) long and start with a letter or an underscore"
-opaque type DatabaseTable <: String  = String :| DatabaseTableConstraint
+    DescribedAs[
+      (Not[Blank] & Match["""^[a-zA-Z_][0-9a-zA-Z$_]{0,63}$"""]),
+      "Database table must be at most 64 characters (letter, digit, dollar sign or underscore) long and start with a letter or an underscore"
+    ]
+type DatabaseTable                   = DatabaseTable.T
 
-object DatabaseTable extends RefinedTypeOps[String, DatabaseTableConstraint, DatabaseTable]
+object DatabaseTable extends RefinedType[String, DatabaseTableConstraint]
 
-private type DatabaseUserConstraint = Not[Blank] DescribedAs "Database user must not be blank"
-opaque type DatabaseUser <: String  = String :| DatabaseUserConstraint
+private type DatabaseUserConstraint = DescribedAs[Not[Blank], "Database user must not be blank"]
+type DatabaseUser                   = DatabaseUser.T
 
-object DatabaseUser extends RefinedTypeOps[String, DatabaseUserConstraint, DatabaseUser]
+object DatabaseUser extends RefinedType[String, DatabaseUserConstraint]
 
-private type DatabasePasswordConstraint = Not[Blank] DescribedAs "Database password must not be blank"
-opaque type DatabasePassword <: String  = String :| DatabasePasswordConstraint
+private type DatabasePasswordConstraint = DescribedAs[Not[Blank], "Database password must not be blank"]
+type DatabasePassword                   = DatabasePassword.T
 
-object DatabasePassword extends RefinedTypeOps[String, DatabasePasswordConstraint, DatabasePassword]
+object DatabasePassword extends RefinedType[String, DatabasePasswordConstraint]

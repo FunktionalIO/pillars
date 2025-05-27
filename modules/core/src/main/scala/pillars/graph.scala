@@ -51,7 +51,7 @@ object graph:
         override def message: Message = this match
             case GraphError.CyclicDependencyError      => Message("Cyclic dependency found")
             case GraphError.MissingDependency(missing) =>
-                if missing.size == 1 then Message(s"Missing dependency: ${missing.head}".assume)
-                else Message(s"${missing.size} missing dependencies: ${missing.mkString(", ")}".assume)
+                if missing.size == 1 then Message.assume(s"Missing dependency: ${missing.head}")
+                else Message.assume(s"${missing.size} missing dependencies: ${missing.mkString(", ")}")
     end GraphError
 end graph

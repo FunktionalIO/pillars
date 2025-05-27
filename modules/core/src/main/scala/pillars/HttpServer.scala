@@ -85,7 +85,9 @@ object HttpServer:
                 yamlName = openApi.yamlName,
                 contextPath = openApi.contextPath,
                 useRelativePaths = openApi.useRelativePaths,
-                showExtensions = openApi.showExtensions
+                showExtensions = openApi.showExtensions,
+                initializerOptions = openApi.initializerOptions,
+                oAuthInitOptions = openApi.oAuthInitOptions
               )
             ).fromServerEndpoints(endpoints, name, infos.version)
         else Nil
@@ -136,7 +138,9 @@ object HttpServer:
             yamlName: String = "pillars.yaml",
             contextPath: List[String] = Nil,
             useRelativePaths: Boolean = true,
-            showExtensions: Boolean = false
+            showExtensions: Boolean = false,
+            initializerOptions: Option[Map[String, String]] = None,
+            oAuthInitOptions: Option[Map[String, String]] = None
         )
     end Config
 end HttpServer

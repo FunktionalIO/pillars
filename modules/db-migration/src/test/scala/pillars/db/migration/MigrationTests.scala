@@ -33,9 +33,9 @@ class MigrationTests extends PillarsFromContainerForEach:
         val url =
             s"jdbc:postgresql://${dbConfig.host}:${dbConfig.port}/${dbConfig.database}"
         MigrationConfig(
-          url = JdbcUrl(url.refineUnsafe),
-          username = DatabaseUser(dbConfig.username.assume),
-          password = Some(Secret(DatabasePassword(dbConfig.password.value.assume)))
+          url = JdbcUrl.assume(url),
+          username = DatabaseUser.assume(dbConfig.username),
+          password = Some(Secret(DatabasePassword.assume(dbConfig.password.value)))
         )
     end configFor
 

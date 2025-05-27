@@ -1,12 +1,12 @@
 import sbt.*
 
 object versions {
-    val scala            = "3.3.5"
+    val scala            = "3.6.4"
     // Dependencies
     val cats             = "2.13.0"
     val catsEffect       = "3.6.0"
     val circe            = "0.14.12"
-    val circeYaml        = "0.15.3"
+    val circeYaml        = "0.16.0"
     val decline          = "2.5.0"
     val doobie           = "1.0.0-RC9"
     val flyway           = "11.5.0"
@@ -15,15 +15,14 @@ object versions {
     val http4s           = "0.23.30"
     val http4sNetty      = "0.5.23"
     val ip4s             = "3.6.0"
-    val iron             = "2.6.0"
+    val iron             = "3.0.1"
     val literally        = "1.2.0"
-    val openApiCirce     = "0.11.3"
     val otel4s           = "0.12.0"
     val postgresqlDriver = "42.7.5"
     val rediculous       = "0.5.1"
     val scribe           = "3.16.0"
     val skunk            = "1.0.0-M10"
-    val tapir            = "1.11.20"
+    val tapir            = "1.11.32"
     val testContainers   = "0.43.0"
 
     object munit {

@@ -36,9 +36,9 @@ object DB extends ModuleTestSupport:
         DatabaseConfig(
           host = Host.fromString(container.host).get,
           port = Port.fromInt(container.container.getMappedPort(5432)).get,
-          database = pillars.db.DatabaseName(container.databaseName.assume),
-          username = pillars.db.DatabaseUser(container.username.assume),
-          password = Secret(pillars.db.DatabasePassword(container.password.assume)),
+          database = pillars.db.DatabaseName.assume(container.databaseName),
+          username = pillars.db.DatabaseUser.assume(container.username),
+          password = Secret(pillars.db.DatabasePassword.assume(container.password)),
           poolSize = PoolSize(10),
           probe = ProbeConfig()
         )

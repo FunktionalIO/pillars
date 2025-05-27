@@ -93,12 +93,12 @@ object RedisConfig:
     given Codec[RedisConfig] = Codec.AsObject.derivedConfigured
 end RedisConfig
 
-private type RedisUserConstraint = Not[Blank] DescribedAs "Redis user must not be blank"
-opaque type RedisUser <: String  = String :| RedisUserConstraint
+private type RedisUserConstraint = DescribedAs[Not[Blank], "Redis user must not be blank"]
+type RedisUser                   = RedisUser.T
 
-object RedisUser extends RefinedTypeOps[String, RedisUserConstraint, RedisUser]
+object RedisUser extends RefinedType[String, RedisUserConstraint]
 
-private type RedisPasswordConstraint = Not[Blank] DescribedAs "Redis password must not be blank"
-opaque type RedisPassword <: String  = String :| RedisPasswordConstraint
+private type RedisPasswordConstraint = DescribedAs[Not[Blank], "Redis password must not be blank"]
+type RedisPassword                   = RedisPassword.T
 
-object RedisPassword extends RefinedTypeOps[String, RedisPasswordConstraint, RedisPassword]
+object RedisPassword extends RefinedType[String, RedisPasswordConstraint]

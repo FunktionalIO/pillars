@@ -25,10 +25,10 @@ case class DB(container: JdbcDatabaseContainer) extends ModuleSupport:
 
     private def dbConfig: DatabaseConfig =
         DatabaseConfig(
-          driverClassName = DriverClassName(container.driverClassName.assume),
-          url = JdbcUrl(container.jdbcUrl.assume),
-          username = DatabaseUser(container.username.assume),
-          password = Secret(DatabasePassword(container.password.assume)),
+          driverClassName = DriverClassName.assume(container.driverClassName),
+          url = JdbcUrl.assume(container.jdbcUrl),
+          username = DatabaseUser.assume(container.username),
+          password = Secret(DatabasePassword.assume(container.password)),
           probe = ProbeConfig()
         )
 end DB

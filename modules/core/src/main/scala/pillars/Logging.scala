@@ -39,10 +39,10 @@ object Logging:
             case Format.Json => ScribeCirceJsonSupport.writer(config.output.writer)
             case _           => config.output.writer
 
-    private type BufferSizeConstraint = Positive DescribedAs "Buffer size should be positive"
-    opaque type BufferSize <: Int     = Int :| BufferSizeConstraint
+    private type BufferSizeConstraint = DescribedAs[Positive, "Buffer size should be positive"]
+    type BufferSize                   = BufferSize.T
 
-    object BufferSize extends RefinedTypeOps[Int, BufferSizeConstraint, BufferSize]
+    object BufferSize extends RefinedType[Int, BufferSizeConstraint]
 
     enum Format:
         case Json

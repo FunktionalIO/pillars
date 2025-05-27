@@ -106,8 +106,8 @@ object Observability:
     end Config
 
     private type ServiceNameConstraint = Not[Blank]
-    opaque type ServiceName <: String  = String :| ServiceNameConstraint
-    private object ServiceName extends RefinedTypeOps[String, ServiceNameConstraint, ServiceName]
+    type ServiceName                   = ServiceName.T
+    object ServiceName extends RefinedType[String, ServiceNameConstraint]
 
     extension [A <: String](value: A)
         def toAttribute(name: String): Attribute[String] = Attribute(name, value)

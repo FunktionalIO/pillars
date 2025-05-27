@@ -54,23 +54,23 @@ object PillarsError:
     private[pillars] final case class PayloadTooLarge(maxLength: Long) extends PillarsError:
         override def code: Code              = Code("ERR")
         override def number: ErrorNumber     = ErrorNumber(Int.MaxValue)
-        override def message: Message        = Message(s"Payload limit ($maxLength) exceeded".refineUnsafe)
+        override def message: Message        = Message.assume(s"Payload limit ($maxLength) exceeded")
         override def status: StatusCode      = StatusCode.PayloadTooLarge
         override def details: Option[String] = Some(s"Payload limit ($maxLength) exceeded")
     end PayloadTooLarge
 
-    private type CodeConstraint = (Not[Empty] & LettersUpperCase) DescribedAs "Code cannot be empty"
-    opaque type Code <: String  = String :| CodeConstraint
+    private type CodeConstraint = DescribedAs[(Not[Empty] & LettersUpperCase), "Code cannot be empty"]
+    type Code                   = Code.T
 
-    object Code extends RefinedTypeOps[String, CodeConstraint, Code]
+    object Code extends RefinedType[String, CodeConstraint]
 
-    private type MessageConstraint = Not[Empty] DescribedAs "Message cannot be empty"
-    opaque type Message <: String  = String :| MessageConstraint
+    private type MessageConstraint = DescribedAs[Not[Empty], "Message cannot be empty"]
+    type Message                   = Message.T
 
-    object Message extends RefinedTypeOps[String, MessageConstraint, Message]
+    object Message extends RefinedType[String, MessageConstraint]
 
-    private type ErrorNumberConstraint = Positive DescribedAs "Number must be strictly positive"
-    opaque type ErrorNumber <: Int     = Int :| ErrorNumberConstraint
+    private type ErrorNumberConstraint = DescribedAs[Positive, "Number must be strictly positive"]
+    type ErrorNumber                   = ErrorNumber.T
 
-    object ErrorNumber extends RefinedTypeOps[Int, ErrorNumberConstraint, ErrorNumber]
+    object ErrorNumber extends RefinedType[Int, ErrorNumberConstraint]
 end PillarsError

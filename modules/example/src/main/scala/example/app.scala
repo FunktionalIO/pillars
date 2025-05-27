@@ -6,7 +6,6 @@ package example
 
 import cats.effect.*
 import example.build.BuildInfo
-import io.github.iltotore.iron.*
 import pillars.*
 import pillars.db.*
 import pillars.db.migrations.*

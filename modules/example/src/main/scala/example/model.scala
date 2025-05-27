@@ -7,33 +7,33 @@ package example
 import io.github.iltotore.iron.*
 import io.github.iltotore.iron.constraint.all.*
 
-type UsernameConstraint        = (MinLength[3] & MaxLength[20]) DescribedAs "Must be between 3 and 20 characters"
-opaque type Username <: String = String :| UsernameConstraint
-object Username extends RefinedTypeOps[String, UsernameConstraint, Username]
+type UsernameConstraint = DescribedAs[(MinLength[3] & MaxLength[20]), "Must be between 3 and 20 characters"]
+type Username           = Username.T
+object Username extends RefinedType[String, UsernameConstraint]
 
-type AgeConstraint     = (Positive & Less[150]) DescribedAs "Must be a positive number less than 150"
-opaque type Age <: Int = Int :| AgeConstraint
-object Age extends RefinedTypeOps[Int, AgeConstraint, Age]
+type AgeConstraint = DescribedAs[(Positive & Less[150]), "Must be a positive number less than 150"]
+type Age           = Age.T
+object Age extends RefinedType[Int, AgeConstraint]
 
-type FirstNameConstraint        = Not[Blank] DescribedAs "First name must not be blank"
-opaque type FirstName <: String = String :| FirstNameConstraint
-object FirstName extends RefinedTypeOps[String, FirstNameConstraint, FirstName]
+type FirstNameConstraint = DescribedAs[Not[Blank], "First name must not be blank"]
+type FirstName           = FirstName.T
+object FirstName extends RefinedType[String, FirstNameConstraint]
 
-type LastNameConstraint        = Not[Blank] DescribedAs "Last name must not be blank"
-opaque type LastName <: String = String :| LastNameConstraint
-object LastName extends RefinedTypeOps[String, LastNameConstraint, LastName]
+type LastNameConstraint = DescribedAs[Not[Blank], "Last name must not be blank"]
+type LastName           = LastName.T
+object LastName extends RefinedType[String, LastNameConstraint]
 
-type EmailConstraint        = Match[".*@.*\\..*"] DescribedAs "Must be a valid e-mail"
-opaque type Email <: String = String :| EmailConstraint
-object Email extends RefinedTypeOps[String, EmailConstraint, Email]
+type EmailConstraint = DescribedAs[Match[".*@.*\\..*"], "Must be a valid e-mail"]
+type Email           = Email.T
+object Email extends RefinedType[String, EmailConstraint]
 
-type CountryNameConstraint        = Not[Blank] DescribedAs "Country name must not be blank"
-opaque type CountryName <: String = String :| CountryNameConstraint
-object CountryName extends RefinedTypeOps[String, CountryNameConstraint, CountryName]
+type CountryNameConstraint = DescribedAs[Not[Blank], "Country name must not be blank"]
+type CountryName           = CountryName.T
+object CountryName extends RefinedType[String, CountryNameConstraint]
 
-type CountryCodeConstraint        = (FixedLength[2] & LettersUpperCase) DescribedAs "Country name must not be blank"
-opaque type CountryCode <: String = String :| CountryCodeConstraint
-object CountryCode extends RefinedTypeOps[String, CountryCodeConstraint, CountryCode]
+type CountryCodeConstraint = DescribedAs[(FixedLength[2] & LettersUpperCase), "Country name must not be blank"]
+type CountryCode           = CountryCode.T
+object CountryCode extends RefinedType[String, CountryCodeConstraint]
 
 case class Country(code: CountryCode, name: CountryName, niceName: String)
 
