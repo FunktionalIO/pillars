@@ -8,7 +8,7 @@ object versions {
     val circe            = "0.14.12"
     val circeYaml        = "0.15.3"
     val decline          = "2.5.0"
-    val doobie           = "1.0.0-RC12"
+    val doobie           = "1.0.0-RC13"
     val flyway           = "11.5.0"
     val fs2              = "3.12.0"
     val fs2Rabbit        = "5.2.0"
@@ -143,8 +143,8 @@ object Dependencies {
     )
 
     val doobie: Seq[ModuleID] = Seq(
-      "org.tpolecat" %% "doobie-core"   % versions.doobie,
-      "org.tpolecat" %% "doobie-hikari" % versions.doobie // HikariCP transactor.
+      "org.typelevel" %% "doobie-core"   % versions.doobie,
+      "org.typelevel" %% "doobie-hikari" % versions.doobie // HikariCP transactor.
     )
 
     val migrationsRuntime: Seq[ModuleID] = Seq(
