@@ -22,7 +22,7 @@ object versions {
     val postgresqlDriver = "42.7.5"
     val rediculous       = "0.5.1"
     val scribe           = "3.16.0"
-    val skunk            = "1.0.0-M10"
+    val skunk            = "1.0.0"
     val tapir            = "1.11.20"
     val testContainers   = "0.43.0"
 
