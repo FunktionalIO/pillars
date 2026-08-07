@@ -14,7 +14,7 @@ object versions {
     val fs2Rabbit        = "5.2.0"
     val http4s           = "0.23.30"
     val http4sNetty      = "0.5.23"
-    val ip4s             = "3.6.0"
+    val ip4s             = "3.8.0"
     val iron             = "2.6.0"
     val literally        = "1.2.0"
     val openApiCirce     = "0.11.3"
