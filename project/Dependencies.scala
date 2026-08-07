@@ -5,7 +5,7 @@ object versions {
     // Dependencies
     val cats             = "2.13.0"
     val catsEffect       = "3.6.0"
-    val circe            = "0.14.12"
+    val circe            = "0.14.16"
     val circeYaml        = "0.15.3"
     val decline          = "2.6.2"
     val doobie           = "1.0.0-RC12"
