@@ -1,7 +1,7 @@
 import sbt.*
 
 object versions {
-    val scala            = "3.3.5"
+    val scala            = "3.3.8"
     // Dependencies
     val cats             = "2.13.0"
     val catsEffect       = "3.6.0"
