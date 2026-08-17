@@ -18,8 +18,9 @@ import pillars.probes.Probe
 
 abstract class App(val modules: ModuleSupport*):
     def infos: AppInfo
-    def probes: List[Probe]                = Nil
-    def adminControllers: List[Controller] = Nil
+    def probes: List[Probe]                     = Nil
+    def adminControllers: Run[List[Controller]] = Nil
+    def controllers: Run[List[Controller]]      = Nil
     def run: Run[IO[Unit]]
 
     import pillars.given
@@ -28,7 +29,14 @@ abstract class App(val modules: ModuleSupport*):
             Opts.option[Path]("config", "Path to the configuration file").map: configPath =>
                 Pillars(infos, modules, configPath).use: pillars =>
                     given Pillars = pillars
-                    run.as(ExitCode.Success)
+
+                    (for
+                        _ <- run.toResource
+                        _ <- Spawn[IO].background(
+                               pillars.adminServer.restartWith(pillars.adminControllers ++ adminControllers)
+                             )
+                        _ <- Spawn[IO].background(pillars.apiServer.restartWith(controllers))
+                    yield ()).useForever.as(ExitCode.Success)
 
         command.parse(args, sys.env) match
             case Left(help)  => Console[IO].errorln(help).as(ExitCode.Error)

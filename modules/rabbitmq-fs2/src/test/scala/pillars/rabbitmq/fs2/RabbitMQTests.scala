@@ -39,6 +39,8 @@ class RabbitMQTests extends CatsEffectSuite, TestContainerForEach:
         def logger                          = scribe.cats.io
         def readConfig[T](using Decoder[T]) = ???
         def module[T](key: Module.Key): T   = ???
+        def adminServer                     = ???
+        def adminControllers                = ???
 
     given Tracer[IO] = Tracer.noop[IO]
 

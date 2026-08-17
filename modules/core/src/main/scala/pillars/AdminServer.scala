@@ -5,32 +5,31 @@
 package pillars
 
 import cats.effect.IO
-import cats.effect.Resource.ExitCase
+import cats.effect.Resource
 import cats.syntax.all.*
 import com.comcast.ip4s.*
 import io.circe.Codec
 import io.circe.derivation.Configuration
-import pillars.AdminServer.Config
 import scribe.cats.io.*
 import sttp.tapir.*
 
-final case class AdminServer(config: Config, infos: AppInfo, obs: Observability, controllers: List[Controller]):
-    def start(): IO[Unit] =
-        IO.whenA(config.enabled):
-            for
-                _ <- info(s"Starting admin server on ${config.http.host}:${config.http.port}")
-                _ <- HttpServer
-                         .build("admin", config.http, config.openApi, infos, obs, controllers.flatten)
-                         .onFinalizeCase:
-                             case ExitCase.Errored(e) => error(s"Admin server stopped with error: $e")
-                             case _                   => info("Admin server stopped")
-                         .useForever
-            yield ()
-            end for
-    end start
-end AdminServer
-
 object AdminServer:
+
+    def create(config: Config, infos: AppInfo, context: ModuleSupport.Context): Resource[IO, HttpServer] =
+        if config.enabled then
+            HttpServer(
+              HttpServer.Usage.Admin,
+              config.http,
+              config.openApi,
+              infos,
+              context.observability,
+              context.logger,
+              probes.livenessController
+            )
+        else
+            HttpServer.noop.pure[IO].toResource
+    end create
+
     val baseEndpoint: Endpoint[Unit, Unit, HttpErrorResponse, Unit, Any] =
         endpoint.in("admin").errorOut(PillarsError.View.output)
 

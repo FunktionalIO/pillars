@@ -39,9 +39,14 @@ trait Pillars:
     /**
      * The API server for the application.
      *
-     * It has to be manually started by calling the `start` method in the application.
      */
-    def apiServer: ApiServer
+    def apiServer: HttpServer
+
+    /**
+     * The admin server for the application.
+     *
+     */
+    def adminServer: HttpServer
 
     /**
      * The logger for the application.
@@ -61,6 +66,21 @@ trait Pillars:
      * @return the module.
      */
     def module[T](key: Module.Key): T
+
+    /**
+     * The admin controllers for the application.
+     *
+     * @return the admin controllers.
+     */
+    def adminControllers: List[Controller]
+
+    /**
+     * The API controllers for the application.
+     *
+     * @return the API controllers.
+     */
+    def apiControllers: List[Controller] = Nil
+
 end Pillars
 
 /**
@@ -88,23 +108,23 @@ object Pillars:
             _               <- Resource.eval(Logging.init(_config.log))
             _logger          = scribe.cats.io
             context          = ModuleSupport.Context(obs, configReader, _logger)
+            _adminServer    <- AdminServer.create(_config.admin, infos, context)
             _               <- Resource.eval(_logger.info("Loading modules..."))
             _modules        <- loadModules(modules, context)
             _               <- Resource.eval(_logger.debug(s"Loaded ${_modules.size} modules"))
             probes          <- ProbeManager.build(_modules, obs)
             _               <- Spawn[IO].background(probes.start())
-            _               <- Spawn[IO].background:
-                                   AdminServer(_config.admin, infos, obs, _modules.adminControllers :+ probesController(probes))
-                                       .start()
+            _apiServer      <- ApiServer.create(_config.api, infos, context)
         yield new Pillars:
             override def appInfo: AppInfo                       = infos
             override def observability: Observability           = obs
             override def config: PillarsConfig                  = _config
-            override def apiServer: ApiServer                   =
-                ApiServer.init(config.api, infos, observability, logger)
+            override def apiServer: HttpServer                  = _apiServer
+            override def adminServer: HttpServer                = _adminServer
             override def logger: Scribe[IO]                     = _logger
             override def readConfig[T](using Decoder[T]): IO[T] = configReader.read[T]
             override def module[T](key: Module.Key): T          = _modules.get(key)
+            override def adminControllers: List[Controller]     = _modules.adminControllers :+ probesController(probes)
         end for
     end apply
 
@@ -116,10 +136,7 @@ object Pillars:
      * @param context The context for loading the modules.
      * @return a resource that will instantiate the modules.
      */
-    private def loadModules(
-        modules: Seq[ModuleSupport],
-        context: ModuleSupport.Context
-    ): Resource[IO, Modules] =
+    private def loadModules(modules: Seq[ModuleSupport], context: ModuleSupport.Context): Resource[IO, Modules] =
         scribe.info(s"Found ${modules.size} modules: ${modules.map(_.key).map(_.name).mkString(", ")}")
         modules.topologicalSort(_.dependsOn) match
             case Left(value)  => throw value

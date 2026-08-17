@@ -20,6 +20,8 @@ import pillars.ApiServer
 import pillars.App
 import pillars.AppInfo
 import pillars.Config.PillarsConfig
+import pillars.Controller
+import pillars.HttpServer
 import pillars.Module
 import pillars.Modules
 import pillars.Observability
@@ -59,11 +61,13 @@ trait PillarsSuite extends CatsEffectSuite, TestContainersSuite:
             override def appInfo: AppInfo                                = BuildInfo.toAppInfo
             override def observability: Observability                    = obs
             override def config: PillarsConfig                           = conf
-            override def apiServer: ApiServer                            = ApiServer.noop
+            override def apiServer: HttpServer                           = HttpServer.noop
             override def logger: Scribe[IO]                              = scribe.cats.io
             override def readConfig[T](using decoder: Decoder[T]): IO[T] =
                 IO.raiseError(new NotImplementedError("readConfig is not available in tests"))
             override def module[T](key: Module.Key): T                   = modules.get(key)
+            override def adminServer: HttpServer                         = HttpServer.noop
+            override def adminControllers: List[Controller]              = Nil
         end for
     end fromContainer
 
