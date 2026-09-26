@@ -20,7 +20,7 @@ object versions {
     val openApiCirce     = "0.11.3"
     val otel4s           = "0.12.0"
     val postgresqlDriver = "42.7.5"
-    val rediculous       = "0.5.1"
+    val rediculous       = "0.6.0"
     val scribe           = "3.16.0"
     val skunk            = "1.0.0-M10"
     val tapir            = "1.11.20"
