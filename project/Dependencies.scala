@@ -10,7 +10,7 @@ object versions {
     val decline          = "2.5.0"
     val doobie           = "1.0.0-RC12"
     val flyway           = "11.5.0"
-    val fs2              = "3.12.0"
+    val fs2              = "3.12.2"
     val fs2Rabbit        = "5.2.0"
     val http4s           = "0.23.30"
     val http4sNetty      = "0.5.23"
