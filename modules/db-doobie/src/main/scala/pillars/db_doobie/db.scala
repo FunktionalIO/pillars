@@ -7,9 +7,9 @@ package pillars.db_doobie
 import cats.effect.*
 import cats.syntax.all.*
 import com.zaxxer.hikari.HikariConfig
-import doobie.*
-import doobie.hikari.HikariTransactor
-import doobie.implicits.*
+import org.typelevel.doobie.*
+import org.typelevel.doobie.hikari.HikariTransactor
+import org.typelevel.doobie.implicits.*
 import fs2.io.file.Files
 import io.circe.Codec
 import io.circe.Decoder as CirceDecoder
