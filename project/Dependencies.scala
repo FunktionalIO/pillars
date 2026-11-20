@@ -30,7 +30,7 @@ object versions {
         val core       = "1.1.0"
         val catsEffect = "2.1.0"
         val scalacheck = "1.1.0"
-        val http4s     = "3.0.0"
+        val http4s     = "3.1.0"
     }
 
     object scodec {
