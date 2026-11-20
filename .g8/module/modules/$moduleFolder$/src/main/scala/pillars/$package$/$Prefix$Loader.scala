@@ -38,7 +38,7 @@ final case class $Prefix$(client: $Prefix$Client) extends Module:
         val probe = new Probe:
             override def component: Component =
                 Component(Component.Name("$lowerCaseModuleName$"), Component.Type.Datastore)
-            override def check: IO[Boolean]    = true.pure[IO]
+            override def check: IO[Boolean]   = true.pure[IO]
         probe.pure[List]
     end probes
 end $Prefix$
